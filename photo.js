@@ -36,6 +36,43 @@ function resizeLive(){
  liveCanvas.width=Math.round(960*density);liveCanvas.height=Math.round(540*density)
 }
 new ResizeObserver(resizeLive).observe(room);resizeLive();
+// Keep a representative exposure available even when the transport is stopped.
+const tapeStills = new Map();
+function tapeStill(id) {
+ if (!tapeStills.has(id)) {
+  tapeStills.set(id, null);
+  const source = document.createElement('video');
+  source.muted = true;
+  source.preload = 'auto';
+  source.onloadedmetadata = () => { source.currentTime = Math.min(3, source.duration / 3); };
+  source.onseeked = () => {
+   const still = document.createElement('canvas');
+   still.width = 80; still.height = 60;
+   still.getContext('2d').drawImage(source, 0, 0, 80, 60);
+   tapeStills.set(id, still);
+   source.onseeked = source.onloadedmetadata = null;
+   source.removeAttribute('src'); source.load();
+  };
+  source.src = programs[id].file;
+ }
+ return programId === id && player.readyState >= 2 && mode !== 'stop' ? player : tapeStills.get(id);
+}
+function exposeTape(g, points, height, image, offset) {
+ const pitch = height * 1.45;
+ let travelled = offset;
+ for (let i = 1; i < points.length; i++) {
+  const [x,y] = points[i-1], dx = points[i][0]-x, dy = points[i][1]-y;
+  const length = Math.hypot(dx,dy);
+  g.save(); g.translate(x,y); g.rotate(Math.atan2(dy,dx));
+  g.beginPath(); g.rect(0,-height/2,length+.35,height); g.clip();
+  g.fillStyle = '#30251e'; g.fillRect(0,-height/2,length+1,height);
+  if (image) {
+   for (let u = -((travelled % pitch + pitch) % pitch); u < length; u += pitch)
+    g.drawImage(image,u+1,-height/2+1,pitch-2,height-2);
+  }
+  g.restore(); travelled += length;
+ }
+}
 let lastDraw=0;
 function animateStudio(now){
  requestAnimationFrame(animateStudio);
@@ -46,6 +83,20 @@ function animateStudio(now){
   g.save();g.translate(x,y);g.rotate(slant);g.scale(rx,ry);g.beginPath();g.arc(0,0,1,0,2*Math.PI);g.clip();
   g.rotate(angle*Math.PI/180*(i?1.08:1));g.drawImage(surfaces[i],-1,-1,2,2);g.restore()
  });
+ if (loaded && typeof programs !== 'undefined' && programs[loaded]) {
+  const still = tapeStill(loaded);
+  for (const [x,y,rx,ry,slant] of geometry.reels) {
+   g.save(); g.translate(x,y); g.rotate(slant);
+   const edge = [];
+   for (let j=0;j<=32;j++) {
+    const a = Math.PI*(.94-.88*j/32);
+    edge.push([rx*.96*Math.cos(a),ry*.96*Math.sin(a)+3]);
+   }
+   exposeTape(g,edge,6,still,angle*.12);
+   g.restore();
+  }
+  exposeTape(g,geometry.ribbon,8,still,angle*.12);
+ }
  const [sx,sy,sw,sh]=geometry.screen;
  g.save();g.beginPath();g.roundRect(sx,sy,sw,sh,[sw*.15]);g.clip();g.fillStyle='#131815';g.fillRect(sx,sy,sw,sh);
  if(power&&loaded&&mode!=='stop'){g.drawImage(c,sx,sy,sw,sh);g.globalAlpha=.13;g.fillStyle='#06100c';for(let j=sy;j<sy+sh;j+=1.8)g.fillRect(sx,j,sw,.55)}
