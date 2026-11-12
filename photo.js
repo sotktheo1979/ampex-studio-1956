@@ -51,7 +51,7 @@ function animateStudio(now){
  if(power&&loaded&&mode!=='stop'){g.drawImage(c,sx,sy,sw,sh);g.globalAlpha=.13;g.fillStyle='#06100c';for(let j=sy;j<sy+sh;j+=1.8)g.fillRect(sx,j,sw,.55)}
  g.restore();
  if(power&&mode!=='stop'&&mode!=='pause'){
-  g.save();g.beginPath();geometry.ribbon.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.strokeStyle='rgba(248,201,135,.24)';g.lineWidth=.7;g.setLineDash([.8,9,2,22]);g.lineDashOffset=-angle*.13;g.stroke();g.restore()
+  g.save();g.beginPath();geometry.ribbon.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.strokeStyle='rgba(248,201,135,.24)';g.lineWidth=.7;g.setLineDash([.8,9,2,22]);g.lineDashOffset=angle*.13;g.stroke();g.restore()
  }
 }
 requestAnimationFrame(animateStudio);
