@@ -10,12 +10,12 @@ selectProgram();
 
 draw=function(t){
  selectProgram();
- ctx.fillStyle='#101511';ctx.fillRect(0,0,c.width,c.height);
- if(!power||!loaded||mode==='stop'){player.pause();return}
- if(player.readyState<2)return;
+ if(!power||!loaded||mode==='stop'){player.pause();ctx.fillStyle='#101511';ctx.fillRect(0,0,c.width,c.height);return}
+ if(player.readyState<2||player.seeking)return;
  const target=position%player.duration;
  if(Number.isFinite(target)&&Math.abs(target-player.currentTime)>(mode==='play'||mode==='record'?.85:.25))player.currentTime=target;
  if(mode==='play'||mode==='record'){if(player.paused)player.play().catch(()=>{})}else player.pause();
+ if(player.seeking)return;
  ctx.save();ctx.translate(Math.sin(t*7)*Math.abs(tracking)*.25,0);ctx.drawImage(player,0,0,400,300);ctx.restore();
  ctx.fillStyle='rgba(15,30,21,.16)';for(let y=0;y<300;y+=4)ctx.fillRect(0,y,400,1);
  if(Math.abs(tracking)>10||mode==='forward'||mode==='rewind'){ctx.fillStyle='rgba(235,240,223,.28)';ctx.fillRect(0,(t*48)%300,400,4)}
