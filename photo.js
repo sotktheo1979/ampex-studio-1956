@@ -391,7 +391,7 @@ new ResizeObserver(resizeLive).observe(room);resizeLive();
 
 // ---------------------------------------------------------------------------
 // THREADED TAPE — the visitor sees the programme travelling along the path.
-// (Real quadruplex tape carries invisible magnetic tracks; the faint pictures
+// (Real quadruplex tape carries invisible magnetic tracks; the film-like frames
 // are the exhibit's way of showing what the tape holds.)
 // ---------------------------------------------------------------------------
 const tapeStills=new Map();
@@ -403,19 +403,75 @@ function tapeStill(id){
   v.onseeked=()=>{const still=document.createElement('canvas');still.width=80;still.height=60;still.getContext('2d').drawImage(v,0,0,80,60);tapeStills.set(id,still);v.onseeked=v.onloadedmetadata=null;v.removeAttribute('src');v.load()};
   v.src=programs[id].file;
  }
- return programId===id&&player.readyState>=2&&(mode==='play'||mode==='record')?player:tapeStills.get(id);
+ return tapeStills.get(id);
 }
-const tapeExposure=document.createElement('canvas');tapeExposure.width=64;tapeExposure.height=48;
-const exposurePaint=tapeExposure.getContext('2d');
-const stock=document.createElement('canvas');stock.width=64;stock.height=48;
-(function(){const sp=stock.getContext('2d'),px=sp.createImageData(64,48);
- for(let y=0;y<48;y++)for(let x=0;x<64;x++){const i=(y*64+x)*4,dn=.89+.09*Math.sin(x*Math.PI/32)+.08*Math.random()+.07*Math.sin(y*Math.PI/47);px.data.set([117*dn,72*dn,38*dn,255],i)}
- sp.putImageData(px,0,0)})();
-function tintExposure(image){
- exposurePaint.globalCompositeOperation='source-over';exposurePaint.globalAlpha=1;exposurePaint.drawImage(stock,0,0);
- if(image){exposurePaint.globalCompositeOperation='multiply';exposurePaint.globalAlpha=.43;exposurePaint.drawImage(image,0,0,64,48)}
- return tapeExposure;
+// Each frame on the tape is a small film cell: amber base, dark perforated
+// edges and a vivid picture. While the programme plays, the frame passing the
+// heads is captured from the CRT's own footage, so the tape carries the same
+// pictures the monitor shows, in order, and keeps them as it travels on.
+const CELL_W=96,CELL_H=72,PIC_X=6,PIC_Y=12,PIC_W=CELL_W-12,PIC_H=CELL_H-24;
+const cellWork=document.createElement('canvas');cellWork.width=PIC_W;cellWork.height=PIC_H;
+const cellWorkPaint=cellWork.getContext('2d',{willReadFrequently:true});
+const vignette=new Float32Array(PIC_W*PIC_H);
+for(let y=0;y<PIC_H;y++)for(let x=0;x<PIC_W;x++){const dx=(x+.5)/PIC_W-.5,dy=(y+.5)/PIC_H-.5;vignette[y*PIC_W+x]=1-.55*(dx*dx+dy*dy)*2}
+function filmCell(source){
+ const c=document.createElement('canvas');c.width=CELL_W;c.height=CELL_H;const g=c.getContext('2d');
+ // film base with a faint lengthwise sheen
+ const base=g.createLinearGradient(0,0,0,CELL_H);
+ base.addColorStop(0,'#5a2f12');base.addColorStop(.18,'#2c1608');base.addColorStop(.5,'#1d0e05');base.addColorStop(.82,'#2c1608');base.addColorStop(1,'#5a2f12');
+ g.fillStyle=base;g.fillRect(0,0,CELL_W,CELL_H);
+ // perforations along both edges
+ g.fillStyle='#0b0502';
+ for(let k=0;k<4;k++){g.beginPath();g.roundRect(5+k*24,3,11,5.5,1.6);g.roundRect(5+k*24,CELL_H-8.5,11,5.5,1.6);g.fill()}
+ g.fillStyle='rgba(255,196,120,.18)';
+ for(let k=0;k<4;k++){g.fillRect(5.5+k*24,8.2,10,.8);g.fillRect(5.5+k*24,CELL_H-3.2,10,.8)}
+ if(source){
+  cellWorkPaint.clearRect(0,0,PIC_W,PIC_H);cellWorkPaint.drawImage(source,0,0,PIC_W,PIC_H);
+  const img=cellWorkPaint.getImageData(0,0,PIC_W,PIC_H),d=img.data;
+  for(let i=0,p=0;i<d.length;i+=4,p++){
+   let r=d[i],gr=d[i+1],b=d[i+2];const l=.3*r+.59*gr+.11*b;
+   // more saturation and contrast, a warm print tone, gently darker corners
+   r=l+(r-l)*1.35;gr=l+(gr-l)*1.35;b=l+(b-l)*1.35;
+   r=(r-128)*1.28+138;gr=(gr-128)*1.28+128;b=(b-128)*1.28+112;
+   const v=vignette[p];
+   d[i]=Math.max(0,Math.min(255,r*v*1.04));d[i+1]=Math.max(0,Math.min(255,gr*v));d[i+2]=Math.max(0,Math.min(255,b*v*.9));
+  }
+  cellWorkPaint.putImageData(img,0,0);
+  g.save();g.beginPath();g.roundRect(PIC_X,PIC_Y,PIC_W,PIC_H,3);g.clip();g.drawImage(cellWork,PIC_X,PIC_Y);g.restore();
+ }else{
+  g.fillStyle='#120803';g.beginPath();g.roundRect(PIC_X,PIC_Y,PIC_W,PIC_H,3);g.fill();
+ }
+ // dark frame line and a thin emulsion edge around the picture
+ g.lineWidth=1.6;g.strokeStyle='rgba(8,4,1,.9)';g.beginPath();g.roundRect(PIC_X,PIC_Y,PIC_W,PIC_H,3);g.stroke();
+ g.lineWidth=.6;g.strokeStyle='rgba(255,210,150,.22)';g.beginPath();g.roundRect(PIC_X-1.2,PIC_Y-1.2,PIC_W+2.4,PIC_H+2.4,3.6);g.stroke();
+ // a whisper of gloss across the whole cell
+ const gloss=g.createLinearGradient(0,0,0,CELL_H);gloss.addColorStop(0,'rgba(255,230,190,.10)');gloss.addColorStop(.35,'rgba(255,230,190,0)');
+ g.fillStyle=gloss;g.fillRect(0,0,CELL_W,CELL_H);
+ return c;
 }
+const filmFrames=new Map();let filmFramesFor='',stillCell=null,stillCellFor='';
+let smearCell=null;
+function fallbackCell(){
+ const still=tapeStills.get(loaded);
+ if(stillCellFor!==loaded+(still?'+':'')){
+  stillCellFor=loaded+(still?'+':'');stillCell=filmCell(still);
+  // the same cell averaged along its length: what the eye sees when it races past
+  smearCell=document.createElement('canvas');smearCell.width=1;smearCell.height=CELL_H;
+  smearCell.getContext('2d').drawImage(stillCell,0,0,1,CELL_H);
+ }
+ return stillCell;
+}
+// Called every frame: the cell passing the heads takes the picture on the CRT.
+function recordFilmFrame(phase,pitch){
+ if(filmFramesFor!==loaded){filmFrames.clear();filmFramesFor=loaded}
+ if(typeof player==='undefined'||programId!==loaded||player.readyState<2||player.seeking||player.paused)return;
+ if(!(mode==='play'||mode==='record')||tapeSpeed<.95||position<0||position>TAPE_SECONDS)return;
+ const n=Math.ceil((phase-HEAD_DISTANCE)/pitch);
+ if(filmFrames.has(n))return;
+ filmFrames.set(n,filmCell(player));
+ if(filmFrames.size>180)filmFrames.delete(filmFrames.keys().next().value);
+}
+const HEAD_DISTANCE=228;   // path distance (from the first guide) of the head drum
 // Measured on the 960 × 540 plate. Each span ends behind a guide or housing.
 const filmSpans=[
  [[262,194],[312,189]],[[323,189],[362,190]],[[384,190],[398,191]],[[418,191],[443,192]],
@@ -423,8 +479,10 @@ const filmSpans=[
 ];
 // 15 in/s on the plate: flange of 12½ in ≈ 2 × 111 px → ≈ 17.8 px per inch.
 const PLATE_PX_PER_SECOND=15*17.8;
-function drawThreadedFilm(g,image,phase,blur){
+function drawThreadedFilm(g,phase,blur){
  const height=13,pitch=height*4/3;
+ tapeStill(loaded);recordFilmFrame(phase,pitch);
+ const fallback=fallbackCell();
  for(const span of filmSpans){
   let distance=span[0][0]-262;
   for(let i=1;i<span.length;i++){
@@ -433,14 +491,17 @@ function drawThreadedFilm(g,image,phase,blur){
    g.beginPath();g.rect(0,-height/2,length,height);g.clip();
    if(blur>.98){
     // at spooling speed individual pictures smear into an even band
-    g.globalAlpha=.7;g.drawImage(image,0,-height/2,length,height);
+    g.globalAlpha=.9;g.drawImage(smearCell,0,-height/2,length,height);
    }else{
     // frames sit at fixed places on the tape: as the tape advances (phase grows)
     // they move downstream, left to right, exactly like the reels pull it
     const offset=((phase-distance)%pitch+pitch)%pitch;
-    g.globalAlpha=.76*(1-blur*.5);
-    for(let u=offset-pitch;u<length;u+=pitch)g.drawImage(image,u,-height/2,pitch+.04,height);
-    if(blur>0){g.globalAlpha=blur*.5;g.drawImage(image,0,-height/2,length,height)}
+    g.globalAlpha=.95*(1-blur*.5);
+    for(let u=offset-pitch;u<length;u+=pitch){
+     const n=Math.round((phase-distance-u)/pitch);
+     g.drawImage(filmFrames.get(n)||fallback,u,-height/2,pitch+.04,height);
+    }
+    if(blur>0){g.globalAlpha=blur*.7;g.drawImage(smearCell,0,-height/2,length,height)}
    }
    g.restore();distance+=length;
   }
@@ -524,7 +585,7 @@ function animateStudio(now){
    drawPathState(g,ranges);
    // the programme pictures appear only on the stretch of oxide tape
    if(ranges.programme){g.save();g.clip(pathBand(...ranges.programme,9));
-    drawThreadedFilm(g,tintExposure(tapeStill(loaded)),travel,Math.min(1,Math.max(0,(perFrame-6)/14)));g.restore()}
+    drawThreadedFilm(g,travel,Math.min(1,Math.max(0,(perFrame-6)/14)));g.restore()}
   }
  }
  drawLamps(g);
