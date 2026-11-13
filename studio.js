@@ -183,6 +183,17 @@ const trays=[bar,document.querySelector('.shelf'),document.querySelector('.conso
 const tray=document.createElement('div');tray.className='tray';document.querySelector('main').append(tray);trays.forEach(t=>tray.append(t));
 const dock=document.createElement('nav');dock.className='dock';dock.setAttribute('aria-label','Πίνακες στούντιο');document.body.append(dock);
 let panel=0;function switchPanel(i){panel=i;stage.classList.toggle('shelf-lit',i===1);trays.forEach((t,j)=>t.hidden=j!==i);[...dock.querySelectorAll('[data-panel]')].forEach((b,j)=>b.setAttribute('aria-pressed',i===j))}
+// The four panels differ in height; switching between them used to resize the
+// photograph by a few pixels (a visible flinch). The tray is held at the height
+// of its tallest panel, measured invisibly in a single frame.
+function lockTrayHeight(){
+ tray.style.minHeight='';
+ const shown=trays.map(t=>t.hidden);let tallest=0;
+ for(const t of trays){trays.forEach(o=>o.hidden=o!==t);tallest=Math.max(tallest,tray.getBoundingClientRect().height)}
+ trays.forEach((t,j)=>t.hidden=shown[j]);
+ tray.style.minHeight=Math.ceil(tallest)+'px';
+}
+let trayTimer;addEventListener('resize',()=>{clearTimeout(trayTimer);trayTimer=setTimeout(lockTrayHeight,120)});
 for(const [i,name] of ['Χειριστήρια','Ταινιοθήκη','Ρυθμίσεις','Μοντάζ'].entries()){const b=document.createElement('button');b.dataset.panel=i;b.textContent=name;b.onclick=()=>switchPanel(i);dock.append(b)}
 const tags=document.createElement('button');tags.textContent='Λεζάντες';tags.setAttribute('aria-pressed','false');tags.onclick=()=>tags.setAttribute('aria-pressed',stage.classList.toggle('labelled'));dock.append(tags);
 const full=document.createElement('button');full.textContent='Πλήρης οθόνη';full.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{toast('Η προβολή καταλαμβάνει ήδη το παράθυρο.')}};if(document.fullscreenEnabled)dock.append(full);document.addEventListener('fullscreenchange',()=>full.textContent=document.fullscreenElement?'Έξοδος από πλήρη οθόνη':'Πλήρης οθόνη');
@@ -191,7 +202,7 @@ objectControl('Λεζάντες',[691,281,20,31],()=>tags.click());
 objectControl('Ταινιοθήκη',[746,282,18,29],()=>switchPanel(1));
 for(const b of stage.querySelectorAll('button')){b.dataset.tag=(b.title||b.getAttribute('aria-label')||'').replace(' on console','').replace(' the studio monitor',' CRT');b.title=b.dataset.tag}
 for(const b of document.querySelectorAll('button'))if(!b.title)b.title=b.getAttribute('aria-label')||b.textContent.trim();
-switchPanel(0);tags.click();
+switchPanel(0);tags.click();lockTrayHeight();
 const zoomSlider=$('#zoom');zoomSlider.min=100;
 const statusLine=document.createElement('output');statusLine.className='studio-state';document.querySelector('header').append(statusLine);setInterval(()=>{statusLine.textContent=[power?(loaded?({play:'PLAY',pause:'PAUSE',forward:'FF',rewind:'REW',record:'REC',stop:'STOP'})[mode]:'Κενό'):'OFF',stamp(position)].join(' · ')},200);
 // Page saved takes so even a full collection fits a short landscape window.
