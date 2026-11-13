@@ -68,7 +68,7 @@ const screenBox=document.createElement('div');screenBox.className='screenbox';ro
 const trays=[bar,document.querySelector('.shelf'),document.querySelector('.console'),edit];
 const tray=document.createElement('div');tray.className='tray';document.querySelector('main').append(tray);trays.forEach(t=>tray.append(t));
 const dock=document.createElement('nav');dock.className='dock';dock.setAttribute('aria-label','Πίνακες στούντιο');document.body.append(dock);
-let panel=0;function switchPanel(i){panel=i;trays.forEach((t,j)=>t.hidden=j!==i);[...dock.querySelectorAll('[data-panel]')].forEach((b,j)=>b.setAttribute('aria-pressed',i===j))}
+let panel=0;function switchPanel(i){panel=i;stage.classList.toggle('shelf-lit',i===1);trays.forEach((t,j)=>t.hidden=j!==i);[...dock.querySelectorAll('[data-panel]')].forEach((b,j)=>b.setAttribute('aria-pressed',i===j))}
 for(const [i,name] of ['Χειριστήρια','Ταινιοθήκη','Ρυθμίσεις','Μοντάζ'].entries()){const b=document.createElement('button');b.dataset.panel=i;b.textContent=name;b.onclick=()=>switchPanel(i);dock.append(b)}
 const tags=document.createElement('button');tags.textContent='Λεζάντες';tags.setAttribute('aria-pressed','false');tags.onclick=()=>tags.setAttribute('aria-pressed',stage.classList.toggle('labelled'));dock.append(tags);
 const full=document.createElement('button');full.textContent='Πλήρης οθόνη';full.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{toast('Η προβολή καταλαμβάνει ήδη το παράθυρο.')}};if(document.fullscreenEnabled)dock.append(full);document.addEventListener('fullscreenchange',()=>full.textContent=document.fullscreenElement?'Έξοδος από πλήρη οθόνη':'Πλήρης οθόνη');
@@ -197,15 +197,11 @@ function moveHardware(now){
   const g=l.paint;g.clearRect(0,0,10,30);
   if(l.value<.01)continue;
   samplePlate(g,l.x-10,l.y,10,16,0,0);
-  const tip=16-11*Math.cos(l.value*Math.PI);
-  const chrome=g.createLinearGradient(3,0,7,0);
-  chrome.addColorStop(0,'#423b31');chrome.addColorStop(.24,'#a29a8a');
-  chrome.addColorStop(.42,'#f1e6d2');chrome.addColorStop(.68,'#aba293');chrome.addColorStop(1,'#48433c');
-  g.save();g.shadowColor='#18140fb0';g.shadowOffsetX=.9;g.shadowOffsetY=1.4;g.shadowBlur=2;
-  g.strokeStyle=chrome;g.lineWidth=3.1;g.lineCap='round';g.beginPath();g.moveTo(5,16);g.lineTo(5,tip);g.stroke();g.restore();
-  const glint=g.createRadialGradient(4.3,tip-.85,.1,5,tip,2.55);
-  glint.addColorStop(0,'#fff2d9');glint.addColorStop(.38,'#c7bfae');glint.addColorStop(.8,'#776f62');glint.addColorStop(1,'#3e3931');
-  g.fillStyle=glint;g.beginPath();g.ellipse(5,tip,2.35,2.05,0,0,Math.PI*2);g.fill();
+  // Reproject the photographed shaft around its fixed collar.
+  const projection=Math.cos(Math.PI*l.value);
+  g.save();g.translate(0,16);g.scale(1,projection);
+  samplePlate(g,l.x,l.y,10,15,0,-15);
+  g.restore();
  }
  for(const m of meters){
   const g=m.paint;g.clearRect(0,0,48,25);
@@ -246,3 +242,8 @@ document.addEventListener('click',event=>{
  syncTransportKeys();
 },true);
 syncTransportKeys();
+
+const shelfShade=document.createElement('div');
+shelfShade.className='shelf-shade';
+shelfShade.setAttribute('aria-hidden','true');
+place(shelfShade,0,0,246,310);
