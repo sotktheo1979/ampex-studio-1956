@@ -29,3 +29,7 @@ header{border-radius:12px 12px 0 0}.dock{border-radius:0 0 12px 12px;padding:5px
 }
 .stage-photo .physical-dial:focus-visible{box-shadow:none;outline:0}
 .stage-photo .physical-dial:focus-visible::after{outline:2px solid #ffe0a0;outline-offset:1px}
+
+.shelf-shade{position:absolute;pointer-events:none;z-index:1;background:linear-gradient(100deg,rgba(6,10,11,.79),rgba(10,12,11,.53));mask-image:linear-gradient(to right,#000 64%,transparent),linear-gradient(to bottom,#000 80%,transparent);mask-composite:intersect;transition:opacity .3s}
+.shelf-lit .shelf-shade{opacity:0}
+.stage-photo button[data-tag="Ζουμ"]::after,.stage-photo button[data-tag="Σήμανση"]::after,.stage-photo button[data-tag="Ράφι"]::after{top:auto;bottom:104%}
