@@ -57,6 +57,26 @@ function tapeStill(id) {
  }
  return programId === id && player.readyState >= 2 && mode !== 'stop' ? player : tapeStills.get(id);
 }
+const tapeExposure = document.createElement('canvas');
+tapeExposure.width = 64;
+tapeExposure.height = 48;
+const exposurePaint = tapeExposure.getContext('2d');
+function tintExposure(image) {
+ if (!image) return null;
+ exposurePaint.globalAlpha = 1;
+ exposurePaint.globalCompositeOperation = 'source-over';
+ const base = exposurePaint.createLinearGradient(0,0,0,48);
+ base.addColorStop(0,'#654831');
+ base.addColorStop(.18,'#795438');
+ base.addColorStop(.8,'#69482f');
+ base.addColorStop(1,'#533923');
+ exposurePaint.fillStyle = base;
+ exposurePaint.fillRect(0,0,64,48);
+ exposurePaint.globalCompositeOperation = 'multiply';
+ exposurePaint.globalAlpha = .46;
+ exposurePaint.drawImage(image,0,0,64,48);
+ return tapeExposure;
+}
 function exposeTape(g, points, height, image, offset) {
  const pitch = height * 1.45;
  let travelled = offset;
@@ -65,10 +85,10 @@ function exposeTape(g, points, height, image, offset) {
   const length = Math.hypot(dx,dy);
   g.save(); g.translate(x,y); g.rotate(Math.atan2(dy,dx));
   g.beginPath(); g.rect(0,-height/2,length+.35,height); g.clip();
-  g.fillStyle = '#30251e'; g.fillRect(0,-height/2,length+1,height);
+  g.fillStyle = '#69482f'; g.fillRect(0,-height/2,length+1,height);
   if (image) {
    for (let u = -((travelled % pitch + pitch) % pitch); u < length; u += pitch)
-    g.drawImage(image,u+1,-height/2+1,pitch-2,height-2);
+    g.drawImage(image,u,-height/2,pitch+.12,height);
   }
   g.restore(); travelled += length;
  }
@@ -84,7 +104,7 @@ function animateStudio(now){
   g.rotate(angle*Math.PI/180*(i?1.08:1));g.drawImage(surfaces[i],-1,-1,2,2);g.restore()
  });
  if (loaded && typeof programs !== 'undefined' && programs[loaded]) {
-  const still = tapeStill(loaded);
+  const still = tintExposure(tapeStill(loaded));
   for (const [x,y,rx,ry,slant] of geometry.reels) {
    g.save(); g.translate(x,y); g.rotate(slant);
    const edge = [];
@@ -101,9 +121,7 @@ function animateStudio(now){
  g.save();g.beginPath();g.roundRect(sx,sy,sw,sh,[sw*.15]);g.clip();g.fillStyle='#131815';g.fillRect(sx,sy,sw,sh);
  if(power&&loaded&&mode!=='stop'){g.drawImage(c,sx,sy,sw,sh);g.globalAlpha=.13;g.fillStyle='#06100c';for(let j=sy;j<sy+sh;j+=1.8)g.fillRect(sx,j,sw,.55)}
  g.restore();
- if(power&&mode!=='stop'&&mode!=='pause'){
-  g.save();g.beginPath();geometry.ribbon.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.strokeStyle='rgba(248,201,135,.24)';g.lineWidth=.7;g.setLineDash([.8,9,2,22]);g.lineDashOffset=angle*.13;g.stroke();g.restore()
- }
+
 }
 requestAnimationFrame(animateStudio);
 function viewStudio(){stage.style.transform='perspective(1600px) scale('+Math.max(1,zoom)+') rotateY('+((tilt-.22)*4)+'deg)';room.classList.toggle('empty-deck',!loaded);}
