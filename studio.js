@@ -202,7 +202,7 @@ objectControl('Λεζάντες',[691,281,20,31],()=>tags.click());
 objectControl('Ταινιοθήκη',[746,282,18,29],()=>switchPanel(1));
 for(const b of stage.querySelectorAll('button')){b.dataset.tag=(b.title||b.getAttribute('aria-label')||'').replace(' on console','').replace(' the studio monitor',' CRT');b.title=b.dataset.tag}
 for(const b of document.querySelectorAll('button'))if(!b.title)b.title=b.getAttribute('aria-label')||b.textContent.trim();
-switchPanel(0);tags.click();lockTrayHeight();
+switchPanel(0);lockTrayHeight();   // labels start hidden; the Λεζάντες button shows them
 const zoomSlider=$('#zoom');zoomSlider.min=100;
 const statusLine=document.createElement('output');statusLine.className='studio-state';document.querySelector('header').append(statusLine);setInterval(()=>{statusLine.textContent=[power?(loaded?({play:'PLAY',pause:'PAUSE',forward:'FF',rewind:'REW',record:'REC',stop:'STOP'})[mode]:'Κενό'):'OFF',stamp(position)].join(' · ')},200);
 // Page saved takes so even a full collection fits a short landscape window.
@@ -314,7 +314,7 @@ const knobs=[
 // own pixels) and a chrome bat handle is drawn swinging through its pivot.
 const levers=[
  [658.2,291.6,302.1,()=>zoom>1],
- [700.6,291.3,302.0,()=>!stage.classList.contains('labelled')]
+ [700.6,291.3,302.0,()=>stage.classList.contains('labelled')]   // down = labels shown
 ].map(([x,ball,pivot,read])=>({...hardwareSurface(x-9,284,18,34),cx:x,ball,pivot,read,value:0,clean:null}));
 function cleanLeverPanel(l){
  const c=document.createElement('canvas'),k=8;c.width=18*k;c.height=34*k;const g=c.getContext('2d',{willReadFrequently:true});
