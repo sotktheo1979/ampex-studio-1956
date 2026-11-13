@@ -102,3 +102,49 @@ document.addEventListener('click',event=>{
  const key=event.target.closest('.stage-photo button');
  if(key)key.animate([{boxShadow:'inset 0 2px 6px #291b0b99,0 0 6px #ffd89a'},{boxShadow:'none'}],{duration:340});
 });
+
+const consoleRec = document.createElement('button');
+consoleRec.type='button';
+consoleRec.dataset.mode='record';
+consoleRec.setAttribute('aria-label','REC');
+consoleRec.setAttribute('aria-pressed','false');
+consoleRec.title='REC';
+consoleRec.textContent='REC';
+consoleRec.style.cssText='position:absolute;z-index:5;padding:0;border:2px solid #34251e;border-radius:3px;background:linear-gradient(#a44533,#762820 65%,#4c1812);color:#f3d5ac;font:bold clamp(7px,.85vw,14px) Arial;box-shadow:inset 0 1px 1px #d48869,0 2px 2px #17150f;cursor:pointer';
+place(consoleRec,477,351,32,16);
+consoleRec.onclick=()=>setMode('record');
+
+let recordingStart=null;
+const transportBeforeRecording=setMode;
+setMode=function(next){
+ const previous=mode, end=position;
+ transportBeforeRecording(next);
+ if(mode===previous)return;
+ if(previous==='record' && recordingStart && end>recordingStart.start){
+  takes.push({...recordingStart,end});takes=takes.slice(-12);
+  try{localStorage.setItem('ampex-cuts-v1',JSON.stringify(takes))}catch{}
+  drawTakes();toast('Το απόσπασμα προστέθηκε στο Μοντάζ.');
+ }
+ recordingStart=mode==='record'?{reel:loaded,start:position}:null;
+ consoleRec.style.background=mode==='record'?'linear-gradient(#ed7965,#a92d22)':'linear-gradient(#a44533,#762820 65%,#4c1812)';
+};
+const meterNeedles=[{x:313,y:313,phase:0},{x:380,y:313,phase:1.8}].map(({x,y,phase})=>{
+ const needle=document.createElement('span');
+ needle.setAttribute('aria-hidden','true');
+ needle.style.cssText='position:absolute;pointer-events:none;background:#37291c;width:.12%;height:2.5%;transform-origin:center bottom;z-index:2';
+ place(needle,x,y-14,.95,14);
+ return {needle,phase,angle:-48};
+});
+let meterTime=performance.now();
+function animateMeters(now){
+ const dt=Math.min(.1,(now-meterTime)/1000);meterTime=now;
+ const active=power && (mode==='play'||mode==='record');
+ for(const m of meterNeedles){
+  const t=position;
+  const target=active?-8+22*Math.sin(t*5+m.phase)+12*Math.sin(t*11+m.phase): -48;
+  m.angle+=(target-m.angle)*(1-Math.exp(-dt*(target>m.angle?16:7)));
+  m.needle.style.transform='rotate('+m.angle+'deg)';
+ }
+ requestAnimationFrame(animateMeters);
+}
+requestAnimationFrame(animateMeters);
