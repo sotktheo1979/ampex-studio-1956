@@ -1,6 +1,7 @@
 <!doctype html><html lang="el"><head><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-NPtTagKZ4P/vuOCmIhZ032uND3C0cWDQ0fInft/aeyQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><style>
 /* Initial paint gate: never expose the legacy machine layout while its
    external CSS and photographic renderer are still initializing. */
+html:not(.ampex-ready) .stage-photo{transition:none!important}
 html:not(.ampex-ready) main,
 html:not(.ampex-ready) .dock,
 html:not(.ampex-ready) .under,
