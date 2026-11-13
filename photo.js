@@ -61,36 +61,53 @@ const tapeExposure = document.createElement('canvas');
 tapeExposure.width = 64;
 tapeExposure.height = 48;
 const exposurePaint = tapeExposure.getContext('2d');
+// The stock, grain and photographic density travel as one material.
+const stock = document.createElement('canvas');
+stock.width = 64; stock.height = 48;
+const stockPaint = stock.getContext('2d');
+const pixels = stockPaint.createImageData(64,48);
+for (let y=0; y<48; y++) {
+ for (let x=0; x<64; x++) {
+  const i=(y*64+x)*4;
+  const density=.89+.09*Math.sin(x*Math.PI/32)+.08*Math.random()+.07*Math.sin(y*Math.PI/47);
+  pixels.data.set([117*density,72*density,38*density,255],i);
+ }
+}
+stockPaint.putImageData(pixels,0,0);
 function tintExposure(image) {
- if (!image) return null;
- exposurePaint.globalAlpha = 1;
- exposurePaint.globalCompositeOperation = 'source-over';
- const base = exposurePaint.createLinearGradient(0,0,0,48);
- base.addColorStop(0,'#654831');
- base.addColorStop(.18,'#795438');
- base.addColorStop(.8,'#69482f');
- base.addColorStop(1,'#533923');
- exposurePaint.fillStyle = base;
- exposurePaint.fillRect(0,0,64,48);
- exposurePaint.globalCompositeOperation = 'multiply';
- exposurePaint.globalAlpha = .46;
- exposurePaint.drawImage(image,0,0,64,48);
+ exposurePaint.globalCompositeOperation='source-over';
+ exposurePaint.globalAlpha=1;
+ exposurePaint.drawImage(stock,0,0);
+ if(image) {
+  exposurePaint.globalCompositeOperation='multiply';
+  exposurePaint.globalAlpha=.43;
+  exposurePaint.drawImage(image,0,0,64,48);
+ }
  return tapeExposure;
 }
-function exposeTape(g, points, height, image, offset) {
- const pitch = height * 1.45;
- let travelled = offset;
- for (let i = 1; i < points.length; i++) {
-  const [x,y] = points[i-1], dx = points[i][0]-x, dy = points[i][1]-y;
-  const length = Math.hypot(dx,dy);
-  g.save(); g.translate(x,y); g.rotate(Math.atan2(dy,dx));
-  g.beginPath(); g.rect(0,-height/2,length+.35,height); g.clip();
-  g.fillStyle = '#69482f'; g.fillRect(0,-height/2,length+1,height);
-  if (image) {
-   for (let u = -((travelled % pitch + pitch) % pitch); u < length; u += pitch)
-    g.drawImage(image,u,-height/2,pitch+.12,height);
+// Measured on the 960 x 540 deck plate. Each span ends behind a guide or housing.
+const filmSpans=[
+ [[262,194],[312,189]],
+ [[323,189],[362,190]],
+ [[384,190],[398,191]],
+ [[418,191],[443,192]],
+ [[540,192],[573,191],[628,186]],
+ [[645,186],[681,191],[714,197]]
+];
+function drawThreadedFilm(g,image,phase) {
+ const height=13, pitch=height*4/3;
+ for(const span of filmSpans) {
+  let distance=span[0][0]-262;
+  for(let i=1;i<span.length;i++) {
+   const [x,y]=span[i-1], dx=span[i][0]-x, dy=span[i][1]-y;
+   const length=Math.hypot(dx,dy);
+   g.save(); g.translate(x,y); g.rotate(Math.atan2(dy,dx));
+   g.beginPath(); g.rect(0,-height/2,length,height); g.clip();
+   g.globalAlpha=.76;
+   const offset=((distance+phase)%pitch+pitch)%pitch;
+   for(let u=-offset;u<length;u+=pitch) g.drawImage(image,u,-height/2,pitch+.04,height);
+   g.restore(); distance+=length;
   }
-  g.restore(); travelled += length;
  }
 }
 let lastDraw=0;
@@ -105,7 +122,7 @@ function animateStudio(now){
  });
  if (loaded && typeof programs !== 'undefined' && programs[loaded]) {
   const still = tintExposure(tapeStill(loaded));
-  exposeTape(g,geometry.ribbon,8,still,angle*.12);
+  drawThreadedFilm(g,still,angle*.24);
  }
  const [sx,sy,sw,sh]=geometry.screen;
  g.save();g.beginPath();g.roundRect(sx,sy,sw,sh,[sw*.15]);g.clip();g.fillStyle='#131815';g.fillRect(sx,sy,sw,sh);
