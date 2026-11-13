@@ -105,16 +105,6 @@ function animateStudio(now){
  });
  if (loaded && typeof programs !== 'undefined' && programs[loaded]) {
   const still = tintExposure(tapeStill(loaded));
-  for (const [x,y,rx,ry,slant] of geometry.reels) {
-   g.save(); g.translate(x,y); g.rotate(slant);
-   const edge = [];
-   for (let j=0;j<=32;j++) {
-    const a = Math.PI*(.94-.88*j/32);
-    edge.push([rx*.96*Math.cos(a),ry*.96*Math.sin(a)+3]);
-   }
-   exposeTape(g,edge,6,still,angle*.12);
-   g.restore();
-  }
   exposeTape(g,geometry.ribbon,8,still,angle*.12);
  }
  const [sx,sy,sw,sh]=geometry.screen;
