@@ -8,17 +8,35 @@ let programId='',swapTimer,card=0;
 function selectProgram(){const p=programs[loaded];if(!p){player.pause();programId='';return}if(programId!==loaded){programId=loaded;player.src=p.file;player.load()}}
 selectProgram();
 
+// Quadruplex behaviour: the rotating heads only produce a picture with the tape
+// moving at exactly 15 in/s. In PAUSE or while spooling the monitor loses the
+// picture, and on PLAY the servos need a moment to lock before it settles.
+let lockFrom=0,lastPictureMode='stop',pictureRunning=false;
+function noPicture(t,spooling){
+ ctx.fillStyle='#0b100d';ctx.fillRect(0,0,c.width,c.height);
+ for(let i=0;i<220;i++){const g=40+Math.random()*90;ctx.fillStyle=`rgba(${g},${g+8},${g},.35)`;ctx.fillRect(Math.random()*400,Math.random()*300,1+Math.random()*3,1)}
+ if(spooling){for(let i=0;i<6;i++){ctx.fillStyle=`rgba(190,205,185,${.05+Math.random()*.12})`;ctx.fillRect(0,(t*260+i*53)%300,400,2+Math.random()*7)}}
+}
 draw=function(t){
  selectProgram();
- if(!power||!loaded||mode==='stop'){player.pause();ctx.fillStyle='#101511';ctx.fillRect(0,0,c.width,c.height);return}
- if(player.readyState<2||player.seeking)return;
+ if(!power||!loaded||mode==='stop'){player.pause();ctx.fillStyle='#101511';ctx.fillRect(0,0,c.width,c.height);pictureRunning=false;return}
+ const running=(mode==='play'||mode==='record')&&tapeSpeed>.95;
+ if(!running){player.pause();noPicture(t,Math.abs(tapeSpeed)>1.5);pictureRunning=false;return}
+ if(!pictureRunning){pictureRunning=true;lockFrom=performance.now()}
+ if(player.readyState<2||player.seeking){noPicture(t,false);return}
  const target=position%player.duration;
- if(Number.isFinite(target)&&Math.abs(target-player.currentTime)>(mode==='play'||mode==='record'?.85:.25))player.currentTime=target;
- if(mode==='play'||mode==='record'){if(player.paused)player.play().catch(()=>{})}else player.pause();
+ if(Number.isFinite(target)&&Math.abs(target-player.currentTime)>.85)player.currentTime=target;
+ if(player.paused)player.play().catch(()=>{});
  if(player.seeking)return;
- ctx.save();ctx.translate(Math.sin(t*7)*Math.abs(tracking)*.25,0);ctx.drawImage(player,0,0,400,300);ctx.restore();
+ // servo lock-up: the frame rolls and tears, then pulls in
+ const locking=Math.max(0,1-(performance.now()-lockFrom)/1100);
+ const roll=locking>0?((1-locking)*300*1.7)%300*locking:0;
+ ctx.save();ctx.translate(Math.sin(t*7)*Math.abs(tracking)*.25+(locking?Math.sin(t*40)*6*locking:0),0);
+ ctx.drawImage(player,0,roll,400,300);if(roll)ctx.drawImage(player,0,roll-300,400,300);
+ if(roll){ctx.fillStyle='#050806';ctx.fillRect(0,roll-6,400,10)}
+ ctx.restore();
  ctx.fillStyle='rgba(15,30,21,.16)';for(let y=0;y<300;y+=4)ctx.fillRect(0,y,400,1);
- if(Math.abs(tracking)>10||mode==='forward'||mode==='rewind'){ctx.fillStyle='rgba(235,240,223,.28)';ctx.fillRect(0,(t*48)%300,400,4)}
+ if(Math.abs(tracking)>10){const n=Math.abs(tracking)/10;for(let i=0;i<n;i++){ctx.fillStyle='rgba(235,240,223,.22)';ctx.fillRect(0,(t*48+i*97)%300,400,2+Math.random()*3)}}
 };
 const preMode=setMode;setMode=function(m){preMode(m);if(mode==='pause'||mode==='stop')player.pause()};
 const swap=document.createElement('img');swap.className='swap';swap.src='hands.webp';swap.alt='Ο τεχνικός κρατά τη μπομπίνα με τα δύο χέρια';room.append(swap);
@@ -41,13 +59,15 @@ async function carry(id,returning,token){
  const motion=swap.animate(frames,{duration,easing:'ease-in-out'});
  await delay(duration*(returning?.32:.66));
  if(token!==transfer)return;
- mountReel(returning?'':id);selectProgram();
+ mountReel(returning?'':id);selectProgram();if(typeof syncTransportKeys==='function')syncTransportKeys();
  await motion.finished;motion.cancel();
 }
 loadReel=async function(id){
  if(loaded===id){toast(id?'Η μπομπίνα βρίσκεται ήδη στη βάση.':'Η βάση είναι κενή.');return}
  const token=++transfer,previous=loaded;
  lockTransport(true);if(power)setMode('stop');
+ // a reel is never lifted while it is still turning: wait for the brakes
+ for(let n=0;n<60&&Math.abs(tapeSpeed)>.02;n++)await delay(50);
  try{if(previous)await carry(previous,true,token);if(id&&token===transfer)await carry(id,false,token)}
  finally{if(token===transfer)lockTransport(false)}
 };
@@ -79,16 +99,16 @@ const facts=[
   "https://ethw.org/w/images/3/3c/Ampex-Dedication-Slides.pdf"
  ],
  [
-  "Ταχύτητα 15 IPS",
-  "Στο αμερικανικό σύστημα Quad η ταινία κινούνταν με 15 ίντσες ανά δευτερόλεπτο, ενώ οι κεφαλές περιστρέφονταν πολύ γρηγορότερα. Το IPS σημαίνει inches per second.",
-  "IEEE History",
-  "https://ethw.org/w/images/3/3c/Ampex-Dedication-Slides.pdf"
+  "15 ίντσες και 240 στροφές",
+  "Στο αμερικανικό σύστημα η ταινία κινούνταν μόλις 15 ίντσες ανά δευτερόλεπτο (38,1 cm/s). Ο τροχός με τις τέσσερις κεφαλές όμως έκανε 240 περιστροφές το δευτερόλεπτο, δηλαδή 14.400 στροφές το λεπτό, και έτσι οι κεφαλές περνούσαν πάνω από την ταινία αρκετά γρήγορα για να γράψουν εικόνα.",
+  "IEEE Milestones",
+  "https://ieeemilestones.ethw.org/Milestones:Ampex_Videotape_Recorder_-_1956"
  ],
  [
-  "240 περιστροφές το δευτερόλεπτο",
-  "Η τετραπλή κεφαλή της πρώιμης αμερικανικής διάταξης έκανε περίπου 240 περιστροφές ανά δευτερόλεπτο. Η μεγάλη σχετική ταχύτητα επέτρεπε την εγγραφή τηλεοπτικού σήματος.",
-  "IEEE History",
-  "https://ethw.org/w/images/3/3c/Ampex-Dedication-Slides.pdf"
+  "Οι κεφαλές και ο οδηγός κενού",
+  "Οι τέσσερις κεφαλές ήταν τοποθετημένες ανά 90 μοίρες στην περιφέρεια ενός μικρού τροχού. Ένας κοίλος οδηγός με αναρρόφηση κενού κύρτωνε την ταινία γύρω από τον τροχό, ώστε κάθε κεφαλή να γράφει μια σχεδόν κάθετη τροχιά από άκρη σε άκρη.",
+  "Computer History Museum",
+  "https://www.computerhistory.org/storageengine/rotary-head-delivers-high-quality-video/"
  ],
  [
   "Πώς καταγραφόταν η εικόνα",
@@ -97,14 +117,8 @@ const facts=[
   "https://www.computerhistory.org/storageengine/rotary-head-delivers-high-quality-video/"
  ],
  [
-  "Το μονοπάτι της ταινίας",
-  "Οι οδηγοί κρατούσαν την ταινία στη σωστή τροχιά και σε σταθερή επαφή με το συγκρότημα κεφαλών. Η ακριβής θέση της ήταν κρίσιμη για την ποιότητα εικόνας.",
-  "AV Artifact Atlas",
-  "https://www.avartifactatlas.com/artifacts/vacuum_guide_adjustment_error.html"
- ],
- [
   "Τι κάνουν οι δύο μπομπίνες",
-  "Η μία μπομπίνα τροφοδοτεί και η άλλη μαζεύει την ταινία. Στην αναπαραγωγή μεταφέρεται από την αριστερή προς τη δεξιά, ενώ στο REW επιστρέφει προς την αριστερή.",
+  "Η αριστερή μπομπίνα τροφοδοτεί και η δεξιά μαζεύει την ταινία· στο REW η ταινία επιστρέφει προς τα αριστερά. Επειδή η ταινία κινείται με σταθερή ταχύτητα, η μπομπίνα με λίγη ταινία γυρίζει πολύ πιο γρήγορα από τη γεμάτη. Παρατηρήστε το στο μηχάνημα.",
   "IASA",
   "https://www.iasa-web.org/sites/default/files/publications/IASA-TC_06-C_20180603.pdf"
  ],
@@ -115,8 +129,8 @@ const facts=[
   "https://americanradiohistory.com/BOOKSHELF-ARH/Technology/Technology-Radio/Television-Engineering-Part-2-Applications-Roberts-1985-II.pdf"
  ],
  [
-  "Η σημασία του Tracking",
-  "Η σωστή χρονική και γεωμετρική ευθυγράμμιση ήταν ουσιώδης για σταθερή αναπαραγωγή. Σφάλματα στους οδηγούς ή στις κεφαλές μπορούσαν να προκαλέσουν εμφανή παραμόρφωση.",
+  "Ρύθμιση και σταθερή εικόνα",
+  "Η εικόνα ήταν σταθερή μόνο όταν οι περιστρεφόμενες κεφαλές ακολουθούσαν ακριβώς τις εγκάρσιες τροχιές. Ένα σύστημα servo συγχρόνιζε τον τροχό των κεφαλών με την τροχιά ελέγχου, ενώ το ύψος και η πίεση του οδηγού κενού ρυθμίζονταν με το χέρι. Μικρές αποκλίσεις έδιναν οριζόντιες ζώνες στην εικόνα.",
   "AV Artifact Atlas",
   "https://www.avartifactatlas.com/artifacts/vacuum_guide_adjustment_error.html"
  ],
@@ -134,9 +148,15 @@ const facts=[
  ],
  [
   "Η ταινία χρησιμοποιούνταν ξανά",
-  "Η μαγνητική βιντεοταινία μπορούσε να σβηστεί και να επανεγγραφεί. Παλιές ετικέτες από τηλεοπτικά αρχεία μαρτυρούν συχνά πολλαπλές προηγούμενες εγγραφές.",
+  "Η μαγνητική βιντεοταινία μπορούσε να σβηστεί και να επανεγγραφεί, και ήταν ακριβή. Γι' αυτό πολλοί σταθμοί έσβηναν παλιές εκπομπές για να ξαναχρησιμοποιήσουν τις μπομπίνες, και μεγάλο μέρος της πρώιμης τηλεόρασης χάθηκε για πάντα.",
   "Library of Congress",
   "https://blogs.loc.gov/now-see-hear/2015/01/the-cabinet-of-curiosities-video-recording-logs/"
+ ],
+ [
+  "Η διάσωση των ταινιών σήμερα",
+  "Οι ταινίες Quadruplex που σώθηκαν διαβάζονται μόνο σε λίγα συντηρημένα μηχανήματα. Σε ορισμένες ταινίες το συνδετικό υλικό απορροφά υγρασία και η ταινία κολλά στις κεφαλές. Τα αρχεία τις φυλάσσουν σε δροσερό και ξηρό περιβάλλον και τις μεταφέρουν σε ψηφιακή μορφή όσο ακόμη είναι δυνατό.",
+  "IASA",
+  "https://www.iasa-web.org/node/3841"
  ],
  [
   "Από το VRX-1000 στο VR-2000",
@@ -233,7 +253,15 @@ function buildTransportKeys(){
 }
 if(photo.complete)buildTransportKeys();else photo.addEventListener('load',buildTransportKeys,{once:true});
 const mechanicalStyle=document.createElement('style');
-mechanicalStyle.textContent='.stage-photo .hit-key canvas{transition:transform 80ms,filter 80ms;transform-origin:center bottom}.stage-photo .hit-key:active canvas,.stage-photo .hit-key[aria-pressed="true"] canvas{transform:translateY(3%) scaleY(.90);filter:brightness(.83)}';
+mechanicalStyle.textContent=[
+ // the key cap sinks into a dark well rather than revealing the photographed cap behind it
+ '.stage-photo .hit-key canvas{transition:transform 80ms,filter 80ms;transform-origin:center bottom}',
+ '.stage-photo .hit-key:active,.stage-photo .hit-key[aria-pressed="true"]{background:linear-gradient(rgba(9,12,11,.9),rgba(14,18,16,.82) 11%,transparent 22%) center top/90% 100% no-repeat!important;border-radius:3px!important}',
+ '.stage-photo .hit-key:active canvas,.stage-photo .hit-key[aria-pressed="true"] canvas{transform:translateY(3%) scaleY(.90);filter:brightness(.83)}',
+ // STOP is a momentary button: its lamp stays on in standby but the cap springs back
+ '.stage-photo .hit-key[data-mode="stop"][aria-pressed="true"]:not(:active){background:transparent!important}',
+ '.stage-photo .hit-key[data-mode="stop"][aria-pressed="true"]:not(:active) canvas{transform:none;filter:none}'
+].join('');
 document.head.append(mechanicalStyle);
 consoleRec.onclick=()=>setMode('record');
 
@@ -311,34 +339,21 @@ function moveHardware(now){
   m.angle+=(target-m.angle)*(1-Math.exp(-dt*(target>m.angle?17:6)));
   g.save();g.translate(24,23);g.rotate(m.angle*Math.PI/180);g.strokeStyle='#46352b';g.lineWidth=.8;
   g.beginPath();g.moveTo(0,0);g.lineTo(0,-20);g.stroke();g.restore();
+  if(!power){g.save();g.globalCompositeOperation='source-atop';g.fillStyle='rgba(18,12,6,.62)';g.fillRect(0,0,48,25);g.restore()}
  }
 }
 requestAnimationFrame(moveHardware);
 
-// Handle a second press as a release, independently of the transport's idle STOP mode.
-let latchedKey=null;
+// Illuminated, interlocked transport buttons: the lamp shows the engaged function.
 function syncTransportKeys(){
  for(const key of document.querySelectorAll('button[data-mode]')){
-  const down=!!power && latchedKey===key.dataset.mode;
+  const down=!!power&&!!loaded&&mode===key.dataset.mode;
   key.classList.toggle('active',down);
   key.setAttribute('aria-pressed',String(down));
  }
 }
 const setLatchedTransport=setMode;
-setMode=function(next){
- setLatchedTransport(next);
- latchedKey=power && loaded && mode===next ? next : (power ? latchedKey : null);
- syncTransportKeys();
-};
-document.addEventListener('click',event=>{
- const key=event.target.closest('button[data-mode]');
- if(!key || key.disabled || !power || key.dataset.mode!==latchedKey)return;
- event.preventDefault();
- event.stopImmediatePropagation();
- setMode('stop');
- latchedKey=null;
- syncTransportKeys();
-},true);
+setMode=function(next){setLatchedTransport(next);syncTransportKeys()};
 syncTransportKeys();
 
 const shelfShade=document.createElement('div');
@@ -349,10 +364,10 @@ place(shelfShade,0,0,246,310);
 const museum='https://collection.sciencemuseumgroup.org.uk/objects/co34573/ampex-videotape-recorder-type-vr-1000a';
 const quadArticle='https://www.worldradiohistory.com/Archive-All-Audio/Archive-Studio-Sound/60s/Studio-Sound-1967-12.pdf';
 const componentPages=[
- ['Ιστορία της Ampex','Το 1956 στο Σικάγο, η ομάδα του Charles Ginsburg παρουσίασε το πρωτότυπο VRX-1000. Ο VR-1000 παραγωγής επέτρεψε στα τηλεοπτικά δίκτυα να καταγράφουν εκπομπές σε μαγνητική ταινία και να τις μεταδίδουν ξανά.',[['Computer History Museum',facts[0][3]]]],
+ ['Ιστορία της Ampex','Το 1956 στο Σικάγο, η ομάδα του Charles Ginsburg παρουσίασε το πρωτότυπο VRX-1000. Ο VR-1000 παραγωγής επέτρεψε στα τηλεοπτικά δίκτυα να καταγράφουν εκπομπές σε μαγνητική ταινία και να τις μεταδίδουν ξανά.',[['Computer History Museum','https://www.computerhistory.org/storageengine/rotary-head-delivers-high-quality-video/'],['IEEE Milestones','https://ieeemilestones.ethw.org/Milestones:Ampex_Videotape_Recorder_-_1956']]],
  ['Τροφοδότρια μπομπίνα','Η αριστερή μπομπίνα τροφοδοτεί τη διαδρομή με ταινία πλάτους 50,8 mm. Στην κανονική εγγραφή περνούν 38,1 cm ταινίας ανά δευτερόλεπτο. Η γρήγορη εγκάρσια κίνηση των κεφαλών επιτρέπει την εγγραφή εικόνας σε αυτή τη σχετικά χαμηλή γραμμική ταχύτητα.',[['Science Museum Group',museum]]],
  ['Μπομπίνα περιέλιξης','Η δεξιά μπομπίνα συλλέγει την ταινία μετά τις κεφαλές. Καθώς μεγαλώνει η διάμετρος της περιέλιξης, χρειάζονται λιγότερες στροφές για να συλλεχθεί το ίδιο μήκος. Στα 15 in/s, ένα λεπτό εκπομπής καταλαμβάνει περίπου 22,9 μέτρα ταινίας.',[['Science Museum Group',museum]]],
- ['Κεφαλές · Τεχνικό δελτίο VR-1000','', [['Studio Sound · 1967',quadArticle],['Computer History Museum',facts[0][3]],['Science Museum Group',museum]]]
+ ['Κεφαλές · Τεχνικό δελτίο VR-1000','', [['Studio Sound · 1967',quadArticle],['Computer History Museum','https://www.computerhistory.org/storageengine/rotary-head-delivers-high-quality-video/'],['Science Museum Group',museum]]]
 ];
 function showComponent(index){
  showFact(0);
@@ -360,13 +375,13 @@ function showComponent(index){
  $('#factTitle').textContent=title;const detail=$('#factText');detail.textContent=body;
  if(index===3){
   const table=document.createElement('table');table.style.cssText='width:100%;text-align:left;border-spacing:.5em .3em';
-  for(const pair of [['Σύστημα','Quadruplex · εγκάρσια σάρωση'],['Πλάτος ταινίας','2 in · 50,8 mm'],['Ταχύτητα ταινίας','15 in/s · 38,1 cm/s'],['Κεφαλές εικόνας','4 περιστρεφόμενες, με πυρήνα φερρίτη'],['Τύμπανο (σύστημα 525 γραμμών)','περίπου 14.400 στροφές/λεπτό'],['Ρυθμός σάρωσης','περίπου 960 εγκάρσιες σαρώσεις/s'],['Εικόνα','Διαμόρφωση συχνότητας (FM)'],['Επαφή με τις κεφαλές','Κοίλος οδηγός κενού']]){
+  for(const pair of [['Σύστημα','Quadruplex · εγκάρσια σάρωση'],['Πλάτος ταινίας','2 in · 50,8 mm'],['Ταχύτητα ταινίας','15 in/s · 38,1 cm/s'],['Κεφαλές εικόνας','4 περιστρεφόμενες, ανά 90°'],['Τύμπανο (σύστημα 525 γραμμών)','περίπου 14.400 στροφές/λεπτό'],['Ρυθμός σάρωσης','περίπου 960 εγκάρσιες σαρώσεις/s'],['Εικόνα','Διαμόρφωση συχνότητας (FM)'],['Επαφή με τις κεφαλές','Κοίλος οδηγός κενού']]){
    const row=table.insertRow();for(const value of pair)row.insertCell().textContent=value;
   }
   detail.append(table);
  }
  const sources=$('#factLinks');sources.replaceChildren();
- for(const [label,url] of links){const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.textContent=label+' ↗';sources.append(link,' ')}
+ for(const [label,url] of links){const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=label+' ↗';sources.append(link,' ')}
  info.querySelector('nav').hidden=true;
 }
 info.addEventListener('close',()=>info.querySelector('nav').hidden=false);
@@ -374,16 +389,4 @@ for(const [tag,index] of [['Ιστορία',0],['Τροφοδότρια',1],['Π
  stage.querySelector('[data-tag="'+tag+'"]').onclick=()=>showComponent(index);
 
 
-// Startup handoff: reveal the FULL prepared UI, not a transitional reel frame.
-// Two animation frames allow layout and initial canvas overlays to settle.
-(function settleStudioStartup(){
- let observed=0;
- function check(){
-  if(!document.documentElement||!stage||!photo.complete||!photo.naturalWidth||stage.classList.contains('frame-loading')){
-   requestAnimationFrame(check);return;
-  }
-  if(++observed<2){requestAnimationFrame(check);return;}
-  document.documentElement.classList.add('ampex-ready');
- }
- requestAnimationFrame(check);
-})();
+
