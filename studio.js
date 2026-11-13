@@ -372,3 +372,18 @@ function showComponent(index){
 info.addEventListener('close',()=>info.querySelector('nav').hidden=false);
 for(const [tag,index] of [['Ιστορία',0],['Τροφοδότρια',1],['Περιέλιξη',2],['Κεφαλές',3]])
  stage.querySelector('[data-tag="'+tag+'"]').onclick=()=>showComponent(index);
+
+
+// Startup handoff: reveal the FULL prepared UI, not a transitional reel frame.
+// Two animation frames allow layout and initial canvas overlays to settle.
+(function settleStudioStartup(){
+ let observed=0;
+ function check(){
+  if(!document.documentElement||!stage||!photo.complete||!photo.naturalWidth||stage.classList.contains('frame-loading')){
+   requestAnimationFrame(check);return;
+  }
+  if(++observed<2){requestAnimationFrame(check);return;}
+  document.documentElement.classList.add('ampex-ready');
+ }
+ requestAnimationFrame(check);
+})();
