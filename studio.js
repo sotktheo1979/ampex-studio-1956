@@ -54,16 +54,110 @@ loadReel=async function(id){
 for(const [id,p] of Object.entries(programs)){const b=document.querySelector('[data-reel="'+id+'"]');b.textContent=p.title+' · '+p.year;document.querySelector('#source option[value="'+id+'"]').textContent=b.textContent}
 const shelfKeys=[...stage.querySelectorAll('.physical-dial')].slice(-3);Object.values(programs).forEach((p,i)=>{shelfKeys[i].title='Load '+p.title;shelfKeys[i].setAttribute('aria-label',shelfKeys[i].title)});
 const facts=[
- ['Η πρώτη επίδειξη','Το 1956 η Ampex παρουσίασε το VRX-1000 σε συνέδριο στο Σικάγο. Οι περιστρεφόμενες κεφαλές του κατέγραφαν τηλεοπτική εικόνα σε μαγνητική ταινία.','Computer History Museum','https://www.computerhistory.org/storageengine/rotary-head-delivers-high-quality-video/'],
- ['Τέσσερις κεφαλές, μία εικόνα','Το σύστημα Quadruplex διαθέτει τέσσερις κεφαλές εικόνας. Καθεμία σαρώνει εγκάρσια την κινούμενη ταινία και καταγράφει ένα μέρος της εικόνας.','Library of Congress','https://www.loc.gov/marc/bibliographic/bd007v.html'],
- ['Τηλεόραση σε διαφορετικές ζώνες ώρας','Το NBC κατέγραφε το The Tonight Show σε ταινία δύο ιντσών για να το μεταδώσει τρεις ώρες αργότερα στη Δυτική Ακτή. Πριν από το 1959 χρησιμοποιούσε κινηματογραφικό φιλμ.','Library of Congress','https://blogs.loc.gov/now-see-hear/2014/07/heeeeeeeeeeeeres-johnny/'],
- ['Η δεύτερη ζωή της ταινίας','Η μαγνητική ταινία μπορούσε να σβηστεί και να ξαναχρησιμοποιηθεί. Σε σωζόμενη θήκη του Public Broadcast Laboratory από το 1967 αναγράφονται οι προηγούμενες εγγραφές της ταινίας.','Library of Congress','https://blogs.loc.gov/now-see-hear/2015/01/the-cabinet-of-curiosities-video-recording-logs/'],
- ['Οι ταινίες της συλλογής','Το στούντιο προβάλλει βωβά ασπρόμαυρα αποσπάσματα από δύο επίκαιρα του 1964 και από τη σεληνιακή αποστολή Apollo 11 του 1969. Η κονσόλα και τα χέρια του τεχνικού είναι φωτογραφικές αναπαραστάσεις.','NASA film library','https://www.nasa.gov/wp-content/uploads/static/history/alsj/a11/video11.html']
+ [
+  "AMPEX: το όνομα",
+  "Η AMPEX πήρε το όνομά της από τα αρχικά του ιδρυτή Alexander M. Poniatoff (AMP) και το EX από τη λέξη Excellence. Η εταιρεία ιδρύθηκε το 1944 στην Καλιφόρνια.",
+  "Stanford",
+  "https://redwoodcity.stanford.edu/ampex-years"
+ ],
+ [
+  "Η μεγάλη επίδειξη του 1956",
+  "Η Ampex παρουσίασε δημόσια το πειραματικό VRX-1000 στο Σικάγο το 1956. Ήταν ορόσημο για την πρακτική μαγνητική καταγραφή τηλεοπτικής εικόνας.",
+  "Computer History Museum",
+  "https://www.computerhistory.org/storageengine/rotary-head-delivers-high-quality-video/"
+ ],
+ [
+  "Γιατί λέγεται Quadruplex",
+  "Ο όρος Quadruplex αναφέρεται στις τέσσερις περιστρεφόμενες κεφαλές εικόνας. Αυτές σαρώνουν διαδοχικά την ταινία εγκάρσια προς την κίνησή της.",
+  "Computer History Museum",
+  "https://www.computerhistory.org/storageengine/rotary-head-delivers-high-quality-video/"
+ ],
+ [
+  "Ταινία πλάτους δύο ιντσών",
+  "Το πρωτοποριακό τηλεοπτικό φορμά χρησιμοποιούσε ανοιχτές μπομπίνες με μαγνητική ταινία πλάτους 2 ιντσών, περίπου 50,8 χιλιοστών.",
+  "IEEE History",
+  "https://ethw.org/w/images/3/3c/Ampex-Dedication-Slides.pdf"
+ ],
+ [
+  "Ταχύτητα 15 IPS",
+  "Στο αμερικανικό σύστημα Quad η ταινία κινούνταν με 15 ίντσες ανά δευτερόλεπτο, ενώ οι κεφαλές περιστρέφονταν πολύ γρηγορότερα. Το IPS σημαίνει inches per second.",
+  "IEEE History",
+  "https://ethw.org/w/images/3/3c/Ampex-Dedication-Slides.pdf"
+ ],
+ [
+  "240 περιστροφές το δευτερόλεπτο",
+  "Η τετραπλή κεφαλή της πρώιμης αμερικανικής διάταξης έκανε περίπου 240 περιστροφές ανά δευτερόλεπτο. Η μεγάλη σχετική ταχύτητα επέτρεπε την εγγραφή τηλεοπτικού σήματος.",
+  "IEEE History",
+  "https://ethw.org/w/images/3/3c/Ampex-Dedication-Slides.pdf"
+ ],
+ [
+  "Πώς καταγραφόταν η εικόνα",
+  "Το τηλεοπτικό σήμα εγγραφόταν με διαμόρφωση συχνότητας (FM), πάνω σε στενές εγκάρσιες μαγνητικές τροχιές. Δεν ήταν φωτογραφικό φιλμ με ορατά καρέ.",
+  "Computer History Museum",
+  "https://www.computerhistory.org/storageengine/rotary-head-delivers-high-quality-video/"
+ ],
+ [
+  "Το μονοπάτι της ταινίας",
+  "Οι οδηγοί κρατούσαν την ταινία στη σωστή τροχιά και σε σταθερή επαφή με το συγκρότημα κεφαλών. Η ακριβής θέση της ήταν κρίσιμη για την ποιότητα εικόνας.",
+  "AV Artifact Atlas",
+  "https://www.avartifactatlas.com/artifacts/vacuum_guide_adjustment_error.html"
+ ],
+ [
+  "Τι κάνουν οι δύο μπομπίνες",
+  "Η μία μπομπίνα τροφοδοτεί και η άλλη μαζεύει την ταινία. Στην αναπαραγωγή μεταφέρεται από την αριστερή προς τη δεξιά, ενώ στο REW επιστρέφει προς την αριστερή.",
+  "IASA",
+  "https://www.iasa-web.org/sites/default/files/publications/IASA-TC_06-C_20180603.pdf"
+ ],
+ [
+  "Ο ήχος είχε άλλη τροχιά",
+  "Στο σύστημα Quadruplex ο ήχος και τα σήματα ελέγχου εγγράφονταν κατά μήκος της ταινίας, σε αντίθεση με την εικόνα που γραφόταν εγκάρσια.",
+  "Television Engineering",
+  "https://americanradiohistory.com/BOOKSHELF-ARH/Technology/Technology-Radio/Television-Engineering-Part-2-Applications-Roberts-1985-II.pdf"
+ ],
+ [
+  "Η σημασία του Tracking",
+  "Η σωστή χρονική και γεωμετρική ευθυγράμμιση ήταν ουσιώδης για σταθερή αναπαραγωγή. Σφάλματα στους οδηγούς ή στις κεφαλές μπορούσαν να προκαλέσουν εμφανή παραμόρφωση.",
+  "AV Artifact Atlas",
+  "https://www.avartifactatlas.com/artifacts/vacuum_guide_adjustment_error.html"
+ ],
+ [
+  "Πριν από τη μαγνητική βιντεοταινία",
+  "Για επανάληψη ή διατήρηση ζωντανών τηλεοπτικών εκπομπών χρησιμοποιούνταν κινηματογραφική καταγραφή της οθόνης. Η βιντεοταινία περιόρισε την ανάγκη για εμφάνιση φιλμ.",
+  "IASA",
+  "https://www.iasa-web.org/sites/default/files/publications/IASA-TC_06-C_20180603.pdf"
+ ],
+ [
+  "Μια εκπομπή, άλλη ζώνη ώρας",
+  "Η δυνατότητα προεγγραφής έκανε πρακτικό να μεταδίδεται το ίδιο πρόγραμμα σε διαφορετικές ώρες ανά περιοχή, χωρίς να απαιτείται δεύτερη ζωντανή παρουσίαση.",
+  "IASA",
+  "https://www.iasa-web.org/sites/default/files/publications/IASA-TC_06-C_20180603.pdf"
+ ],
+ [
+  "Η ταινία χρησιμοποιούνταν ξανά",
+  "Η μαγνητική βιντεοταινία μπορούσε να σβηστεί και να επανεγγραφεί. Παλιές ετικέτες από τηλεοπτικά αρχεία μαρτυρούν συχνά πολλαπλές προηγούμενες εγγραφές.",
+  "Library of Congress",
+  "https://blogs.loc.gov/now-see-hear/2015/01/the-cabinet-of-curiosities-video-recording-logs/"
+ ],
+ [
+  "Από το VRX-1000 στο VR-2000",
+  "Μετά την πειραματική παρουσίαση του 1956 ακολούθησε η παραγωγή VR-1000. Το VR-2000 παρουσιάστηκε το 1964, καθώς η τεχνολογία Quad εξελισσόταν.",
+  "Computer History Museum",
+  "https://www.computerhistory.org/storageengine/rotary-head-delivers-high-quality-video/"
+ ]
 ];
-const info=$('#info');info.innerHTML='<button id="factClose" type="button">Κλείσιμο ×</button><p class="eyebrow">Ταινία και ιστορία</p><h2 id="factTitle"></h2><p id="factText"></p><div id="factLinks"></div><nav><button id="prevFact">Πίσω</button><output id="factPage"></output><button id="nextFact">Επόμενο</button></nav>';
-function showFact(n){card=(n+facts.length)%facts.length;const [title,body,label,url]=facts[card];$('#factTitle').textContent=title;$('#factText').textContent=body;const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.textContent=label+' ↗';$('#factLinks').replaceChildren(a);if(card===4){for(const [label,id] of [['News','1964-03-02_2000-MPH_Jet'],['Sports','1964-10-26_Olympics_End']]){const l=a.cloneNode();l.href='https://archive.org/details/'+id;l.textContent=label+' ↗';$('#factLinks').append(' · ',l)}}$('#factPage').textContent=(card+1)+' / '+facts.length;if(!info.open)info.showModal()}
+const info=$('#info');info.innerHTML='<button id="factClose" type="button">Κλείσιμο ×</button><p class="eyebrow">15 σελίδες τεχνικής ιστορίας</p><h2 id="factTitle"></h2><p id="factText"></p><div id="factLinks"></div><nav><button id="prevFact">Πίσω</button><output id="factPage"></output><button id="nextFact">Επόμενο</button></nav>';
+function showFact(n){
+ card=(n+facts.length)%facts.length;
+ const [title,body,label,url]=facts[card];
+ $('#factTitle').textContent=title;
+ $('#factText').textContent=body;
+ const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=label+' ↗';
+ $('#factLinks').replaceChildren(link);
+ $('#factPage').textContent=(card+1)+' / '+facts.length;
+ if(!info.open)info.showModal();
+}
 $('#about').onclick=()=>showFact(0);$('#factClose').onclick=()=>info.close();$('#prevFact').onclick=()=>showFact(card-1);$('#nextFact').onclick=()=>showFact(card+1);
-objectControl('Κεφαλές',[443,147,94,52],()=>showFact(1));objectControl('Ιστορία',[411,383,137,41],()=>showFact(0));objectControl('Τροφοδοσία ταινίας',[305,57,63,34],()=>showFact(3));objectControl('Περιέλιξη',[596,57,62,36],()=>showFact(2));
+objectControl('Κεφαλές',[443,147,94,52],()=>showFact(2));objectControl('Ιστορία',[411,383,137,41],()=>showFact(1));objectControl('Τροφοδοσία ταινίας',[305,57,63,34],()=>showFact(8));objectControl('Περιέλιξη',[596,57,62,36],()=>showFact(8));
 const screenBox=document.createElement('div');screenBox.className='screenbox';room.before(screenBox);screenBox.append(room);
 const trays=[bar,document.querySelector('.shelf'),document.querySelector('.console'),edit];
 const tray=document.createElement('div');tray.className='tray';document.querySelector('main').append(tray);trays.forEach(t=>tray.append(t));
@@ -177,7 +271,7 @@ const knobs=[
  [745,333,()=>musicOn?65:0]
 ].map(([x,y,read])=>({...hardwareSurface(x-13,y-13,26,26),read,angle:0}));
 const levers=[
- [236,307,()=>!power],[657,299,()=>zoom>1],[700,300,()=>!stage.classList.contains('labelled')],[752,299,()=>panel===1]
+ [657,299,()=>zoom>1],[700,300,()=>!stage.classList.contains('labelled')],[752,299,()=>panel===1]
 ].map(([x,y,read])=>({...hardwareSurface(x-5,y-16,10,30),read,value:0}));
 hardwareDials[hardwareDials.length-1].onclick=()=>switchPanel(panel===1?0:1);
 const meters=[287,354].map((x,i)=>({...hardwareSurface(x-24,303,48,25),phase:i*1.8,angle:-25}));
