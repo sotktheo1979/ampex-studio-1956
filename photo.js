@@ -249,6 +249,7 @@ function animateStudio(now){
  // Reveal the original complete photograph and corrected tape together,
  // only after a finished composited frame has been painted.
  if(stage.classList.contains('frame-loading'))stage.classList.remove('frame-loading');
+ document.documentElement.classList.add('ampex-ready');
 
 }
 requestAnimationFrame(animateStudio);
