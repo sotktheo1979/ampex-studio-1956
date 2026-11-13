@@ -1,38 +1,11 @@
 // Locations are measured against the finished 960 × 540 photographic composition.
 const room=document.querySelector('.room');
 const stage=document.createElement('div');
-stage.className='stage-photo';
-stage.innerHTML='<img alt="Βιντεομαγνητόφωνο Ampex σε τηλεοπτικό στούντιο της δεκαετίας του 1960" class="plate" src="master.webp"><canvas class="clean-plate" aria-hidden="true"></canvas><canvas class="live-layer" aria-hidden="true"></canvas>';
+stage.className='stage-photo frame-loading';
+stage.innerHTML='<img alt="Βιντεομαγνητόφωνο Ampex σε τηλεοπτικό στούντιο της δεκαετίας του 1960" class="plate" src="master.webp"><canvas class="live-layer" aria-hidden="true"></canvas>';
 room.append(stage);
 const photo=stage.querySelector('img'), liveCanvas=stage.querySelector('canvas'), livePaint=liveCanvas.getContext('2d');
 const monitorElement=document.querySelector('#monitor');
-const cleanCanvas=stage.querySelector('.clean-plate'),cleanPaint=cleanCanvas.getContext('2d');
-let plateReady=false;
-function prepareCleanPlate(){
- if(!photo.naturalWidth)return;
- cleanCanvas.width=960;cleanCanvas.height=540;
- cleanPaint.drawImage(photo,0,0,960,540);
- // Replace all original photographed reel apertures and their old
- // shadows underneath the live transport. No retired shape survives
- // as a background silhouette when a transparent opening passes.
- for(const [x,y,rx,ry] of geometry.reels){
-  cleanPaint.save();
-  cleanPaint.translate(x,y);
-  cleanPaint.beginPath();cleanPaint.ellipse(0,0,rx*1.06,ry*1.10,0,0,2*Math.PI);
-  cleanPaint.clip();
-  const deck=cleanPaint.createLinearGradient(-rx,-ry,rx,ry);
-  deck.addColorStop(0,'#827968');
-  deck.addColorStop(.38,'#a19884');
-  deck.addColorStop(.70,'#857b69');
-  deck.addColorStop(1,'#685f51');
-  cleanPaint.fillStyle=deck;
-  cleanPaint.fillRect(-rx*1.1,-ry*1.12,rx*2.2,ry*2.24);
-  cleanPaint.restore();
- }
- plateReady=true;
- photo.style.visibility='hidden';
-}
-
 function place(element,x,y,w,h){
  Object.assign(element.style,{left:(x/960*100)+'%',top:(y/540*100)+'%',width:(w/960*100)+'%',height:(h/540*100)+'%'});
  stage.append(element)
@@ -59,16 +32,19 @@ function solidReelFace(tile){
   const dx=x-384,dy=y-384,r=Math.hypot(dx,dy),j=(y*768+x)*4;
   if(r<112||r>370)continue;
   const luminance=k=>src[k]*.3+src[k+1]*.59+src[k+2]*.11;
-  if(luminance(j)>117)continue;
+  // Only reconstruct the old aperture shadows, not the surrounding metal grain.
+  const brown=src[j]>src[j+2]*1.20 && src[j+1]>src[j+2]*1.12;
+  if(luminance(j)>148&&!brown)continue;
   const t=Math.atan2(dy,dx);
   const sample=sign=>{
    for(let n=1;n<=75;n++){
     const k=4*(768*Math.round(384+r*Math.sin(t+sign*n*.016))+Math.round(384+r*Math.cos(t+sign*n*.016)));
-    if(luminance(k)>120)return [k,n];
+    if(luminance(k)>165 && src[k+2]>=src[k]*.68)return [k,n];
    }
    return [j,1];
   };
   const [l,dl]=sample(-1),[h,dh]=sample(1);
+  if(l===j&&h===j)continue;
   for(let c=0;c<3;c++)pixels.data[j+c]=(src[l+c]*dh+src[h+c]*dl)/(dl+dh);
  }
  ctx.putImageData(pixels,0,0);return tile;
@@ -96,7 +72,7 @@ function prepareReels(){
   surfaces.push(tile)
  }
 }
-photo.addEventListener('load',()=>{prepareCleanPlate();prepareReels()});if(photo.complete&&photo.naturalWidth){prepareCleanPlate();prepareReels()}
+photo.addEventListener('load',prepareReels);if(photo.complete&&photo.naturalWidth)prepareReels();
 function resizeLive(){
  const density=Math.min(4,Math.max(1,stage.getBoundingClientRect().width*devicePixelRatio/960));
  const w=Math.round(960*density),h=Math.round(540*density);
@@ -183,7 +159,7 @@ function drawThreadedFilm(g,image,phase) {
 let lastDraw=0;
 function animateStudio(now){
  requestAnimationFrame(animateStudio);
- if(now-lastDraw<32||document.hidden||!plateReady||surfaces.length!==geometry.reels.length)return;lastDraw=now;
+ if(now-lastDraw<32||document.hidden)return;lastDraw=now;
  const g=livePaint;g.setTransform(liveCanvas.width/960,0,0,liveCanvas.height/540,0,0);g.clearRect(0,0,960,540);
  geometry.reels.forEach(([x,y,rx,ry,slant],i)=>{
   if(!loaded||!surfaces[i])return;
@@ -270,7 +246,9 @@ function animateStudio(now){
  g.save();g.beginPath();g.roundRect(sx,sy,sw,sh,[sw*.15]);g.clip();g.fillStyle='#131815';g.fillRect(sx,sy,sw,sh);
  if(power&&loaded&&mode!=='stop'){g.drawImage(c,sx,sy,sw,sh);g.globalAlpha=.13;g.fillStyle='#06100c';for(let j=sy;j<sy+sh;j+=1.8)g.fillRect(sx,j,sw,.55)}
  g.restore();
- if(!stage.classList.contains('studio-ready'))stage.classList.add('studio-ready');
+ // Reveal the original complete photograph and corrected tape together,
+ // only after a finished composited frame has been painted.
+ if(stage.classList.contains('frame-loading'))stage.classList.remove('frame-loading');
 
 }
 requestAnimationFrame(animateStudio);
