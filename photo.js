@@ -150,7 +150,8 @@ function animateStudio(now){
   if(held>0){
    g.beginPath();g.ellipse(0,12,rx*radius,ry*radius,0,0,2*Math.PI);g.clip();
    // Retain the original light and texture of the full wound tape.
-   g.drawImage(photo,x-rx,y,rx*2,ry+16,-rx,0,rx*2,ry+16);
+   const sx=photo.naturalWidth/960,sy=photo.naturalHeight/540;
+   g.drawImage(photo,(x-rx)*sx,y*sy,rx*2*sx,(ry+16)*sy,-rx,0,rx*2,ry+16);
   }
   g.restore();
   g.scale(rx,ry);g.beginPath();g.arc(0,0,1,0,2*Math.PI);g.clip();
