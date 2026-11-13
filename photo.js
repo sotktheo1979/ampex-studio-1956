@@ -109,17 +109,17 @@ function onDisc(r,u,v,h=0){const c=Math.cos(r.slant),s=Math.sin(r.slant),X=u*r.r
 const packTop=document.createElement('canvas');packTop.width=packTop.height=768;
 (function buildPackTop(){
  const g=packTop.getContext('2d');g.translate(384,384);g.scale(384,384);
- g.fillStyle='#2a1a10';g.beginPath();g.arc(0,0,1,0,7);g.fill();
+ g.fillStyle='#24170f';g.beginPath();g.arc(0,0,1,0,7);g.fill();
  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
  for(let rr=.26;rr<1;rr+=.0042){
   const v=rnd();g.beginPath();g.arc(0,0,rr,0,7);
   g.lineWidth=.0021+v*.0016;
-  g.strokeStyle=v>.93?'rgba(214,150,92,.42)':v>.7?'rgba(150,96,58,.30)':v<.18?'rgba(8,5,3,.5)':'rgba(70,42,25,.35)';
+  g.strokeStyle=v>.93?'rgba(150,118,92,.38)':v>.7?'rgba(92,66,48,.30)':v<.18?'rgba(6,3,2,.5)':'rgba(50,33,22,.35)';
   g.stroke();
  }
  if(g.createConicGradient){
   const sheen=g.createConicGradient(-.7,0,0);
-  for(const [s,a] of [[0,.05],[.12,.30],[.2,.06],[.5,.04],[.62,.26],[.7,.05],[1,.05]])sheen.addColorStop(s,'rgba(236,178,118,'+a+')');
+  for(const [s,a] of [[0,.05],[.12,.30],[.2,.06],[.5,.04],[.62,.26],[.7,.05],[1,.05]])sheen.addColorStop(s,'rgba(205,180,155,'+(a*.6)+')');
   g.globalCompositeOperation='screen';g.fillStyle=sheen;g.beginPath();g.arc(0,0,1,0,7);g.fill();g.globalCompositeOperation='source-over';
  }
 })();
@@ -137,7 +137,7 @@ function buildPhotoSamples(){
   src.width=bw;src.height=bh;const sg=src.getContext('2d',{willReadFrequently:true});sg.drawImage(photo,-bx,-by);
   const pix=sg.getImageData(0,0,bw,bh).data,out=wg.createImageData(W,H);
   for(let j=0;j<H;j++)for(let i=0;i<W;i++){
-   const phi=(i+.5)/W*Math.PI,h=1.2+(j+.5)/H*(r.d-1.6);
+   const phi=(i+.5)/W*Math.PI,h=3.2+(j+.5)/H*(r.d-4.2);   // below the flange rim
    const [px,py]=onDisc(r,.985*Math.cos(phi),.985*Math.sin(phi),h);
    const X=Math.min(bw-1,Math.max(0,Math.round(px*sx-bx))),Y=Math.min(bh-1,Math.max(0,Math.round(py*sy-by)));
    const k=(Y*bw+X)*4,o=(j*W+i)*4;out.data[o]=pix[k];out.data[o+1]=pix[k+1];out.data[o+2]=pix[k+2];out.data[o+3]=255;
@@ -259,7 +259,7 @@ function drawReel(g,r,R,rot,spinStep){
  // clear leader at the ends of the reel looks clear
  // (none once the tape's end has left the path)
  const t=r.i?position:tapeAtSupply();
- if(heldFraction(r.i)>0&&t>TAPE_FIRST+.05&&t<TAPE_LAST-.05)drawTail(g,r,R,t<0||t>TAPE_SECONDS)
+ if(heldFraction(r.i)>0&&t>TAPE_FIRST+.05&&t<TAPE_LAST-.05)drawTail(g,r,R,r.i?(t<=0||t>TAPE_SECONDS):(t<0||t>=TAPE_SECONDS))
  // ---- 7. top flange ------------------------------------------------------------------
  g.save();g.beginPath();g.save();plateDisc(g,r,1.7);g.arc(0,0,1,0,Math.PI*2);g.restore();
  g.save();plateDisc(g,r,0);g.moveTo(1,0);g.arc(0,0,1,0,Math.PI*2);g.restore();g.translate(r.x,0);
@@ -295,7 +295,7 @@ function cylinder(g,r,R,d,texture,c0,c1){
  g.save();g.save();plateDisc(g,r,.6);g.beginPath();g.arc(0,0,R,0,Math.PI*2);g.restore();g.clip();
  const bx=reelBox(r);g.drawImage(r.packProj,bx.x,bx.y+.6,bx.w,bx.h);
  plateDisc(g,r,.6);
- g.lineWidth=.007;g.strokeStyle='rgba(232,170,110,.45)';g.beginPath();g.arc(0,0,R-.004,Math.PI*1.05,Math.PI*1.95);g.stroke();
+ g.lineWidth=.007;g.strokeStyle='rgba(196,168,140,.35)';g.beginPath();g.arc(0,0,R-.004,Math.PI*1.05,Math.PI*1.95);g.stroke();
  g.restore();
  // contact shadow where the pack meets the lower flange
  g.save();plateDisc(g,r,d);g.beginPath();g.arc(0,0,R+.02,0,Math.PI);g.lineWidth=.02;g.strokeStyle='rgba(10,7,4,.35)';g.stroke();g.restore();
@@ -314,10 +314,10 @@ function drawTail(g,r,R,clear){
  const nx=-(etop[1]-top[1]),ny=etop[0]-top[0],n=Math.hypot(nx,ny)||1,span=6;
  const mx=(top[0]+etop[0])/2,my=(top[1]+etop[1])/2;
  const across=g.createLinearGradient(mx,my,mx-nx/n*span*r.side,my-ny/n*span*r.side);
- across.addColorStop(0,'rgba(206,138,72,.94)');across.addColorStop(.4,'rgba(128,68,26,.9)');across.addColorStop(1,'rgba(64,32,12,.94)');
+ across.addColorStop(0,'rgba(92,68,52,.98)');across.addColorStop(.3,'rgba(48,32,22,.98)');across.addColorStop(1,'rgba(22,14,9,.98)');
  if(clear){g.fillStyle='rgba(236,226,200,.16)';g.fill();g.lineWidth=.5;g.strokeStyle='rgba(255,248,226,.55)';g.stroke()}
  else{g.fillStyle=across;g.fill()}
- g.lineWidth=.55;g.strokeStyle='rgba(255,214,150,.7)';g.beginPath();g.moveTo(...top);g.lineTo(...etop);g.stroke();
+ g.lineWidth=.55;g.strokeStyle='rgba(205,182,158,.55)';g.beginPath();g.moveTo(...top);g.lineTo(...etop);g.stroke();
  g.lineWidth=.5;g.strokeStyle='rgba(30,14,5,.55)';g.beginPath();g.moveTo(...bot);g.lineTo(...ebot);g.stroke();
  g.restore();
 }
@@ -390,88 +390,29 @@ function resizeLive(){
 new ResizeObserver(resizeLive).observe(room);resizeLive();
 
 // ---------------------------------------------------------------------------
-// THREADED TAPE — the visitor sees the programme travelling along the path.
-// (Real quadruplex tape carries invisible magnetic tracks; the film-like frames
-// are the exhibit's way of showing what the tape holds.)
+// THREADED TAPE — two-inch quadruplex videotape: an opaque, dark-brown oxide
+// ribbon. The pictures are recorded as invisible magnetic tracks, so nothing is
+// printed on it; what shows that it moves is the faint, uneven texture of the
+// coating (slight density changes, the odd speck) travelling with it.
 // ---------------------------------------------------------------------------
-const tapeStills=new Map();
-function tapeStill(id){
- if(!tapeStills.has(id)){
-  tapeStills.set(id,null);
-  const v=document.createElement('video');v.muted=true;v.preload='auto';v.playsInline=true;
-  v.onloadedmetadata=()=>{v.currentTime=Math.min(3,v.duration/3)};
-  v.onseeked=()=>{const still=document.createElement('canvas');still.width=80;still.height=60;still.getContext('2d').drawImage(v,0,0,80,60);tapeStills.set(id,still);v.onseeked=v.onloadedmetadata=null;v.removeAttribute('src');v.load()};
-  v.src=programs[id].file;
+const OXIDE_LEN=256;   // plate px covered by one texture tile
+const oxideTile=document.createElement('canvas');oxideTile.width=OXIDE_LEN*2;oxideTile.height=26;
+(function buildOxide(){
+ const g=oxideTile.getContext('2d'),W=oxideTile.width,H=oxideTile.height,img=g.createImageData(W,H),d=img.data;
+ let seed=1956;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+ // low-frequency density along the length (wraps seamlessly)
+ const wave=x=>.55*Math.sin(x*Math.PI*2*3/W+.7)+.3*Math.sin(x*Math.PI*2*7/W+2.1)+.15*Math.sin(x*Math.PI*2*13/W+4.4);
+ const rows=[];for(let y=0;y<H;y++)rows.push((rnd()-.5)*.9);           // lengthwise coating streaks
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+  const v=wave(x)*.6+rows[y]*.5+(rnd()-.5)*.35,o=(y*W+x)*4;
+  if(v>0){d[o]=210;d[o+1]=182;d[o+2]=150;d[o+3]=Math.min(255,v*46)}   // lighter, satin
+  else{d[o]=8;d[o+1]=4;d[o+2]=2;d[o+3]=Math.min(255,-v*70)}           // denser oxide
  }
- return tapeStills.get(id);
-}
-// Each frame on the tape is a small film cell: amber base, dark perforated
-// edges and a vivid picture. While the programme plays, the frame passing the
-// heads is captured from the CRT's own footage, so the tape carries the same
-// pictures the monitor shows, in order, and keeps them as it travels on.
-const CELL_W=96,CELL_H=72,PIC_X=6,PIC_Y=12,PIC_W=CELL_W-12,PIC_H=CELL_H-24;
-const cellWork=document.createElement('canvas');cellWork.width=PIC_W;cellWork.height=PIC_H;
-const cellWorkPaint=cellWork.getContext('2d',{willReadFrequently:true});
-const vignette=new Float32Array(PIC_W*PIC_H);
-for(let y=0;y<PIC_H;y++)for(let x=0;x<PIC_W;x++){const dx=(x+.5)/PIC_W-.5,dy=(y+.5)/PIC_H-.5;vignette[y*PIC_W+x]=1-.55*(dx*dx+dy*dy)*2}
-function filmCell(source){
- const c=document.createElement('canvas');c.width=CELL_W;c.height=CELL_H;const g=c.getContext('2d');
- // film base with a faint lengthwise sheen
- const base=g.createLinearGradient(0,0,0,CELL_H);
- base.addColorStop(0,'#5a2f12');base.addColorStop(.18,'#2c1608');base.addColorStop(.5,'#1d0e05');base.addColorStop(.82,'#2c1608');base.addColorStop(1,'#5a2f12');
- g.fillStyle=base;g.fillRect(0,0,CELL_W,CELL_H);
- // perforations along both edges
- g.fillStyle='#0b0502';
- for(let k=0;k<4;k++){g.beginPath();g.roundRect(5+k*24,3,11,5.5,1.6);g.roundRect(5+k*24,CELL_H-8.5,11,5.5,1.6);g.fill()}
- g.fillStyle='rgba(255,196,120,.18)';
- for(let k=0;k<4;k++){g.fillRect(5.5+k*24,8.2,10,.8);g.fillRect(5.5+k*24,CELL_H-3.2,10,.8)}
- if(source){
-  cellWorkPaint.clearRect(0,0,PIC_W,PIC_H);cellWorkPaint.drawImage(source,0,0,PIC_W,PIC_H);
-  const img=cellWorkPaint.getImageData(0,0,PIC_W,PIC_H),d=img.data;
-  for(let i=0,p=0;i<d.length;i+=4,p++){
-   let r=d[i],gr=d[i+1],b=d[i+2];const l=.3*r+.59*gr+.11*b;
-   // more saturation and contrast, a warm print tone, gently darker corners
-   r=l+(r-l)*1.35;gr=l+(gr-l)*1.35;b=l+(b-l)*1.35;
-   r=(r-128)*1.28+138;gr=(gr-128)*1.28+128;b=(b-128)*1.28+112;
-   const v=vignette[p];
-   d[i]=Math.max(0,Math.min(255,r*v*1.04));d[i+1]=Math.max(0,Math.min(255,gr*v));d[i+2]=Math.max(0,Math.min(255,b*v*.9));
-  }
-  cellWorkPaint.putImageData(img,0,0);
-  g.save();g.beginPath();g.roundRect(PIC_X,PIC_Y,PIC_W,PIC_H,3);g.clip();g.drawImage(cellWork,PIC_X,PIC_Y);g.restore();
- }else{
-  g.fillStyle='#120803';g.beginPath();g.roundRect(PIC_X,PIC_Y,PIC_W,PIC_H,3);g.fill();
- }
- // dark frame line and a thin emulsion edge around the picture
- g.lineWidth=1.6;g.strokeStyle='rgba(8,4,1,.9)';g.beginPath();g.roundRect(PIC_X,PIC_Y,PIC_W,PIC_H,3);g.stroke();
- g.lineWidth=.6;g.strokeStyle='rgba(255,210,150,.22)';g.beginPath();g.roundRect(PIC_X-1.2,PIC_Y-1.2,PIC_W+2.4,PIC_H+2.4,3.6);g.stroke();
- // a whisper of gloss across the whole cell
- const gloss=g.createLinearGradient(0,0,0,CELL_H);gloss.addColorStop(0,'rgba(255,230,190,.10)');gloss.addColorStop(.35,'rgba(255,230,190,0)');
- g.fillStyle=gloss;g.fillRect(0,0,CELL_W,CELL_H);
- return c;
-}
-const filmFrames=new Map();let filmFramesFor='',stillCell=null,stillCellFor='';
-let smearCell=null;
-function fallbackCell(){
- const still=tapeStills.get(loaded);
- if(stillCellFor!==loaded+(still?'+':'')){
-  stillCellFor=loaded+(still?'+':'');stillCell=filmCell(still);
-  // the same cell averaged along its length: what the eye sees when it races past
-  smearCell=document.createElement('canvas');smearCell.width=1;smearCell.height=CELL_H;
-  smearCell.getContext('2d').drawImage(stillCell,0,0,1,CELL_H);
- }
- return stillCell;
-}
-// Called every frame: the cell passing the heads takes the picture on the CRT.
-function recordFilmFrame(phase,pitch){
- if(filmFramesFor!==loaded){filmFrames.clear();filmFramesFor=loaded}
- if(typeof player==='undefined'||programId!==loaded||player.readyState<2||player.seeking||player.paused)return;
- if(!(mode==='play'||mode==='record')||tapeSpeed<.95||position<0||position>TAPE_SECONDS)return;
- const n=Math.ceil((phase-HEAD_DISTANCE)/pitch);
- if(filmFrames.has(n))return;
- filmFrames.set(n,filmCell(player));
- if(filmFrames.size>180)filmFrames.delete(filmFrames.keys().next().value);
-}
-const HEAD_DISTANCE=228;   // path distance (from the first guide) of the head drum
+ g.putImageData(img,0,0);
+ // a few specks and one splice-like mark, so the motion reads clearly
+ for(let k=0;k<9;k++){g.fillStyle='rgba(225,205,175,'+(.35+rnd()*.35)+')';g.fillRect(rnd()*W,2+rnd()*(H-4),1.2+rnd()*2,1)}
+ g.fillStyle='rgba(200,190,175,.22)';g.fillRect(W*.62,0,3,H);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(W*.62+3,0,1,H);
+})();
 // Measured on the 960 × 540 plate. Each span ends behind a guide or housing.
 const filmSpans=[
  [[262,194],[312,189]],[[323,189],[362,190]],[[384,190],[398,191]],[[418,191],[443,192]],
@@ -480,29 +421,18 @@ const filmSpans=[
 // 15 in/s on the plate: flange of 12½ in ≈ 2 × 111 px → ≈ 17.8 px per inch.
 const PLATE_PX_PER_SECOND=15*17.8;
 function drawThreadedFilm(g,phase,blur){
- const height=13,pitch=height*4/3;
- tapeStill(loaded);recordFilmFrame(phase,pitch);
- const fallback=fallbackCell();
+ if(blur>.98)return;             // at spooling speed the texture is an even blur
+ const height=13;
  for(const span of filmSpans){
   let distance=span[0][0]-262;
   for(let i=1;i<span.length;i++){
    const [x,y]=span[i-1],dx=span[i][0]-x,dy=span[i][1]-y,length=Math.hypot(dx,dy);
    g.save();g.translate(x,y);g.rotate(Math.atan2(dy,dx));
    g.beginPath();g.rect(0,-height/2,length,height);g.clip();
-   if(blur>.98){
-    // at spooling speed individual pictures smear into an even band
-    g.globalAlpha=.9;g.drawImage(smearCell,0,-height/2,length,height);
-   }else{
-    // frames sit at fixed places on the tape: as the tape advances (phase grows)
-    // they move downstream, left to right, exactly like the reels pull it
-    const offset=((phase-distance)%pitch+pitch)%pitch;
-    g.globalAlpha=.95*(1-blur*.5);
-    for(let u=offset-pitch;u<length;u+=pitch){
-     const n=Math.round((phase-distance-u)/pitch);
-     g.drawImage(filmFrames.get(n)||fallback,u,-height/2,pitch+.04,height);
-    }
-    if(blur>0){g.globalAlpha=blur*.7;g.drawImage(smearCell,0,-height/2,length,height)}
-   }
+   // texture fixed to the tape: it moves downstream, left to right, on PLAY
+   const offset=((phase-distance)%OXIDE_LEN+OXIDE_LEN)%OXIDE_LEN;
+   g.globalAlpha=1-blur;
+   for(let u=offset-OXIDE_LEN;u<length;u+=OXIDE_LEN)g.drawImage(oxideTile,u,-height/2,OXIDE_LEN+.05,height);
    g.restore();distance+=length;
   }
  }
@@ -560,7 +490,7 @@ function animateStudio(now){
  if(document.hidden||!reelsReady)return;
  // Nothing moves while the transport is still and the monitor is dark: keep the
  // last frame instead of repainting it, to spare the visitor's battery.
- const scene=[loaded,power,mode,position.toFixed(3),reelAngle[0].toFixed(4),reelAngle[1].toFixed(4),density,liveCanvas.width,facesOK,!!bareDeck.naturalWidth,!!tapeStills.get(loaded),LAMPS.map(l=>l[4]()?1:0).join('')].join();
+ const scene=[loaded,power,mode,position.toFixed(3),reelAngle[0].toFixed(4),reelAngle[1].toFixed(4),density,liveCanvas.width,facesOK,!!bareDeck.naturalWidth,LAMPS.map(l=>l[4]()?1:0).join('')].join();
  const idle=!(power&&loaded&&mode!=='stop')&&Math.abs(tapeSpeed)<1e-4;
  if(idle&&scene===lastScene&&livePainted)return;
  lastScene=scene;

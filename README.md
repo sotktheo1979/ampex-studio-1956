@@ -14,3 +14,4 @@ Static site, no build step.
 | `edit.js` | Editing bench and music |
 | `studio.js` | Programmes, monitor picture, reel-change animation, 15 history pages, hardware dials |
 | `reels.webp` | Clean reel flanges rebuilt from `master.webp` by `tools/build_reel_faces.py` |
+| `master.webp` | Studio plate; its tape recoloured as brown 2-inch oxide by `tools/recolour_tape.py` (amber original in git history) |
