@@ -19,9 +19,12 @@ header{border-radius:12px 12px 0 0}.dock{border-radius:0 0 12px 12px;padding:5px
 
 @media (hover:hover) and (pointer:fine){
  body button:not(:disabled):hover,body .stage-photo button:not(:disabled):hover,body select:hover,body input[type=range]:hover{
-  cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2226%22%20height%3D%2228%22%20viewBox%3D%220%200%2026%2028%22%3E%3Cg%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20id%3D%22a%22%20d%3D%22M5%203v13m15-13v13M5%205h15v5H5zM3%2015h19M6%2016l13%209M19%2016L6%2025%22%20stroke%3D%22%23201b16%22%20stroke-width%3D%224%22%2F%3E%3Cuse%20href%3D%22%23a%22%20stroke%3D%22%23f2dab0%22%2F%3E%3Cpath%20d%3D%22M5%203v13m15-13v13M5%205h15v5H5zM3%2015h19M6%2016l13%209M19%2016L6%2025%22%20stroke%3D%22%23f2dab0%22%20stroke-width%3D%221.6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") 5 3,pointer;
+  cursor:pointer;
  }
  .stage-photo button:hover:not(:focus-visible){box-shadow:none;outline:0}
+ .stage-photo .hit-key:hover canvas{filter:brightness(1.12) drop-shadow(0 0 2px #ebb86590)}
+ .stage-photo .physical-dial:hover::before,.stage-photo .crt-hit:hover::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 47% 44%,#ffe0a44d,transparent 72%);pointer-events:none}
+ .dock button:hover,.tray button:hover{box-shadow:inset 0 1px 3px #ffe0a447}
  .stage-photo button[data-tag]:hover::after{border:0;text-decoration:underline;text-decoration-color:#e9cd9d;text-underline-offset:2px}
 }
 .stage-photo .physical-dial:focus-visible{box-shadow:none;outline:0}
