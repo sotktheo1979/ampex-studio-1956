@@ -131,8 +131,18 @@ for (cx, cy, rx, ry, sl), (hu, hv, hr) in zip(REELS, HUB):
     face *= (1 + lip)[..., None]
 
     # Photographic hub, feathered into the rebuilt flange.
+    # The hub is a tall machined part: its cap and spindle rise above the base
+    # ring in this view, so the mask is the hub's silhouette, not a circle.
     Rh = np.hypot(U - hu, V - hv)
-    w = np.clip((hr + .012 - Rh) / .026, 0, 1)[..., None]
+    base = np.clip((hr + .012 - Rh) / .026, 0, 1)
+    cap = np.clip((1 - np.hypot(U / .262, (V + .2) / .235)) / .06, 0, 1)
+    spindle = np.clip((.05 - np.abs(U)) / .015, 0, 1) * np.clip((V + .455) / .025, 0, 1) * (V < 0)
+    w = np.maximum(np.maximum(base, cap), spindle)
+    # never borrow the dark edge of a photographed opening near the hub's rim
+    dark = (src @ np.array([.3, .59, .11], np.float32) < 95) & (Rh > .3) & (cap < .01) & (spindle < .01)
+    w = np.where(dark, 0, w)
+    from scipy.ndimage import gaussian_filter
+    w = np.minimum(w, gaussian_filter(w, 4) * 1.15)[..., None]   # soft, seamless edge
     face = face * (1 - w) + src * w
 
     alpha = np.clip((1.003 - R) * N / 2.2, 0, 1)

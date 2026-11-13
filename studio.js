@@ -298,9 +298,57 @@ const knobs=[
  [688,333,()=>monitorElement.classList.contains('focused')?62:0],
  [745,333,()=>musicOn?65:0]
 ].map(([x,y,read])=>({...hardwareSurface(x-13,y-13,26,26),read,angle:0}));
+// Toggle switches. The photographed levers point up; for every other position
+// the lever above the nut is removed (the panel is rebuilt row by row from its
+// own pixels) and a chrome bat handle is drawn swinging through its pivot.
 const levers=[
- [657,299,()=>zoom>1],[700,300,()=>!stage.classList.contains('labelled')],[752,299,()=>panel===1]
-].map(([x,y,read])=>({...hardwareSurface(x-5,y-16,10,30),read,value:0}));
+ [658.2,291.6,302.1,()=>zoom>1],
+ [700.6,291.3,302.0,()=>!stage.classList.contains('labelled')]
+].map(([x,ball,pivot,read])=>({...hardwareSurface(x-9,284,18,34),cx:x,ball,pivot,read,value:0,clean:null}));
+function cleanLeverPanel(l){
+ const c=document.createElement('canvas'),k=8;c.width=18*k;c.height=34*k;const g=c.getContext('2d',{willReadFrequently:true});
+ const sx=photo.naturalWidth/960,sy=photo.naturalHeight/540;
+ g.drawImage(photo,l.x*sx,284*sy,18*sx,34*sy,0,0,c.width,c.height);
+ const img=g.getImageData(0,0,c.width,c.height),d=img.data,W=c.width;
+ // up-lever and its shadow occupy x ∈ [cx-7, cx+4], from the top down to the nut
+ const x0=Math.round((l.cx-7.4-l.x)*k),x1=Math.round((l.cx+4.2-l.x)*k),yEnd=Math.round((l.pivot-5.4-284)*k);
+ for(let y=0;y<yEnd;y++){const L=(y*W+x0-1)*4,R=(y*W+x1+1)*4;
+  for(let x=x0;x<=x1;x++){const f=(x-x0)/(x1-x0),o=(y*W+x)*4,n=(Math.random()-.5)*5;for(let ch=0;ch<3;ch++)d[o+ch]=d[L+ch]*(1-f)+d[R+ch]*f+n}}
+ g.putImageData(img,0,0);
+ // keep only the rebuilt rectangle, feathered
+ const out=document.createElement('canvas');out.width=W;out.height=c.height;const og=out.getContext('2d');
+ og.drawImage(c,0,0);og.globalCompositeOperation='destination-in';
+ const m=og.createLinearGradient(0,0,0,yEnd+k*2);m.addColorStop(0,'#000');m.addColorStop(yEnd/(yEnd+k*2),'#000');m.addColorStop(1,'transparent');
+ og.fillStyle=m;og.fillRect(x0-k,0,x1-x0+2*k,yEnd+k*2);
+ return out;
+}
+function drawLever(l){
+ const g=l.paint;g.clearRect(0,0,18,34);
+ if(l.value<.01)return;                       // photograph already shows it up
+ if(!l.clean)l.clean=cleanLeverPanel(l);
+ g.drawImage(l.clean,0,0,18,34);
+ const px=l.cx-l.x,py=l.pivot-284,len=l.pivot-l.ball;
+ const reach=len*Math.cos(Math.PI*l.value);    // + up … − down, short when pointing at us
+ const near=Math.sin(Math.PI*l.value);          // closer to the camera mid-swing
+ const tx=px+.4*l.value,ty=py-reach,ballR=2.35+near*.45;
+ // the bushing's dark opening, where the photographed lever used to rise
+ const hole=g.createRadialGradient(px,py-1,.2,px,py-1.1,2.4);hole.addColorStop(0,'#120c07');hole.addColorStop(.75,'rgba(26,18,10,.92)');hole.addColorStop(1,'rgba(26,18,10,0)');
+ g.fillStyle=hole;g.beginPath();g.ellipse(px,py-1.1,2.1,2.7,0,0,Math.PI*2);g.fill();
+ // soft shadow cast to the left on the panel
+ g.save();g.globalAlpha=.35;g.strokeStyle='#061412';g.lineWidth=2.6;g.lineCap='round';
+ g.beginPath();g.moveTo(px-1.2,py+.6);g.lineTo(tx-2.6,ty+1.2);g.stroke();g.restore();
+ // tapered chrome bat
+ const nx=1.15,tx2=.7;
+ const shaft=g.createLinearGradient(px-nx,0,px+nx,0);
+ shaft.addColorStop(0,'#3a2c1c');shaft.addColorStop(.35,'#f2dcae');shaft.addColorStop(.6,'#a07c4c');shaft.addColorStop(1,'#2e2216');
+ g.fillStyle=shaft;g.beginPath();g.moveTo(px-nx,py);g.lineTo(tx-tx2,ty);g.lineTo(tx+tx2,ty);g.lineTo(px+nx,py);g.closePath();g.fill();
+ // ball tip
+ const ball=g.createRadialGradient(tx-ballR*.4,ty-ballR*.45,.2,tx,ty,ballR);
+ ball.addColorStop(0,'#fff6dc');ball.addColorStop(.35,'#d6b27a');ball.addColorStop(.8,'#6e4f2c');ball.addColorStop(1,'#2a1d10');
+ g.fillStyle=ball;g.beginPath();g.arc(tx,ty,ballR,0,Math.PI*2);g.fill();
+ // pivot collar glint over the nut's opening
+ g.fillStyle='rgba(30,22,14,.8)';g.beginPath();g.ellipse(px,py,1.6,1.3,0,0,Math.PI*2);g.fill();
+}
 hardwareDials[hardwareDials.length-1].onclick=()=>switchPanel(panel===1?0:1);
 const meters=[287,354].map((x,i)=>({...hardwareSurface(x-24,303,48,25),phase:i*1.8,angle:-25}));
 let hardwareTime=performance.now();
@@ -315,19 +363,10 @@ function moveHardware(now){
   samplePlate(g,k.x,k.y,26,26,-13,-13);g.restore();
  }
  for(const l of levers){
-  l.value+=((l.read()?1:0)-l.value)*(1-Math.exp(-dt*22));
-  const g=l.paint;g.clearRect(0,0,10,30);
-  if(l.value<.01)continue;
-  // Remove only the upright stem above the collar. Leave the original
-  // photographic rim intact on both sides and across its upper arc.
-  g.save();g.beginPath();g.roundRect(2.4,0,5.2,12,2);g.clip();
-  samplePlate(g,l.x-10,l.y,10,12,0,0);g.restore();
-  // Reproject the photographed shaft around its fixed collar.
-  const projection=Math.cos(Math.PI*l.value);
-  g.save();g.translate(0,16);g.scale(1,projection);
-  g.beginPath();g.roundRect(2.4,-15,5.2,15,2.4);g.clip();
-  samplePlate(g,l.x,l.y,10,15,0,-15);
-  g.restore();
+  const was=l.value;
+  l.value+=((l.read()?1:0)-l.value)*(1-Math.exp(-dt*30));
+  if(Math.abs(l.value-(l.read()?1:0))<.003)l.value=l.read()?1:0;
+  if(l.value!==was||!l.drawn){drawLever(l);l.drawn=true}
  }
  for(const m of meters){
   const g=m.paint;g.clearRect(0,0,48,25);
@@ -361,32 +400,34 @@ shelfShade.className='shelf-shade';
 shelfShade.setAttribute('aria-hidden','true');
 place(shelfShade,0,0,246,310);
 
-const museum='https://collection.sciencemuseumgroup.org.uk/objects/co34573/ampex-videotape-recorder-type-vr-1000a';
-const quadArticle='https://www.worldradiohistory.com/Archive-All-Audio/Archive-Studio-Sound/60s/Studio-Sound-1967-12.pdf';
-const componentPages=[
- ['Ιστορία της Ampex','Το 1956 στο Σικάγο, η ομάδα του Charles Ginsburg παρουσίασε το πρωτότυπο VRX-1000. Ο VR-1000 παραγωγής επέτρεψε στα τηλεοπτικά δίκτυα να καταγράφουν εκπομπές σε μαγνητική ταινία και να τις μεταδίδουν ξανά.',[['Computer History Museum','https://www.computerhistory.org/storageengine/rotary-head-delivers-high-quality-video/'],['IEEE Milestones','https://ieeemilestones.ethw.org/Milestones:Ampex_Videotape_Recorder_-_1956']]],
- ['Τροφοδότρια μπομπίνα','Η αριστερή μπομπίνα τροφοδοτεί τη διαδρομή με ταινία πλάτους 50,8 mm. Στην κανονική εγγραφή περνούν 38,1 cm ταινίας ανά δευτερόλεπτο. Η γρήγορη εγκάρσια κίνηση των κεφαλών επιτρέπει την εγγραφή εικόνας σε αυτή τη σχετικά χαμηλή γραμμική ταχύτητα.',[['Science Museum Group',museum]]],
- ['Μπομπίνα περιέλιξης','Η δεξιά μπομπίνα συλλέγει την ταινία μετά τις κεφαλές. Καθώς μεγαλώνει η διάμετρος της περιέλιξης, χρειάζονται λιγότερες στροφές για να συλλεχθεί το ίδιο μήκος. Στα 15 in/s, ένα λεπτό εκπομπής καταλαμβάνει περίπου 22,9 μέτρα ταινίας.',[['Science Museum Group',museum]]],
- ['Κεφαλές · Τεχνικό δελτίο VR-1000','', [['Studio Sound · 1967',quadArticle],['Computer History Museum','https://www.computerhistory.org/storageengine/rotary-head-delivers-high-quality-video/'],['Science Museum Group',museum]]]
-];
-function showComponent(index){
+// The three parts of the machine explain themselves briefly; the full history
+// (15 pages with sources) lives behind the AMPEX nameplate.
+const componentPages={
+ 'Τροφοδότρια':['Τροφοδότρια μπομπίνα',
+  'Η αριστερή μπομπίνα δίνει την ταινία στο μηχάνημα. Ο κινητήρας της δεν τη σπρώχνει: την κρατά ελαφρά προς τα πίσω, ώστε η ταινία να μένει τεντωμένη καθώς περνά από τις κεφαλές. Όσο αδειάζει, γυρίζει όλο και πιο γρήγορα.',
+  'Στα 15 ίντσες ανά δευτερόλεπτο, μία ώρα προγράμματος χρειαζόταν περίπου 1.370 μέτρα ταινίας πλάτους δύο ιντσών.'],
+ 'Περιέλιξη':['Μπομπίνα περιέλιξης',
+  'Η δεξιά μπομπίνα μαζεύει την ταινία μετά τις κεφαλές. Τραβά απαλά και σταθερά, ώστε η ταινία να τυλίγεται σφιχτά και ομοιόμορφα. Στο REW οι ρόλοι αντιστρέφονται και η ταινία γυρίζει πίσω στην αριστερή.',
+  'Ένα μόνο λεπτό εκπομπής καταλάμβανε περίπου 23 μέτρα ταινίας. Επειδή οι μπομπίνες ήταν ακριβές, οι σταθμοί συχνά έσβηναν παλιές εκπομπές για να τις ξαναχρησιμοποιήσουν.'],
+ 'Κεφαλές':['Κεφαλές εικόνας',
+  'Εδώ γράφεται και διαβάζεται η εικόνα. Τέσσερις μικροσκοπικές κεφαλές πάνω σε έναν τροχό γυρίζουν 240 φορές το δευτερόλεπτο και σαρώνουν την ταινία εγκάρσια, ενώ ένας οδηγός με αναρρόφηση την κυρτώνει γύρω τους. Ο ήχος γράφεται χωριστά, κατά μήκος της ταινίας.',
+  'Από αυτές τις τέσσερις κεφαλές βγαίνει το όνομα Quadruplex. Ο τροχός τους φτάνει τις 14.400 στροφές το λεπτό, και γι’ αυτό το μηχάνημα ακούγεται με ένα χαρακτηριστικό ψηλό σφύριγμα όταν παίζει.']
+};
+function showComponent(tag){
  showFact(0);
- const [title,body,links]=componentPages[index];
- $('#factTitle').textContent=title;const detail=$('#factText');detail.textContent=body;
- if(index===3){
-  const table=document.createElement('table');table.style.cssText='width:100%;text-align:left;border-spacing:.5em .3em';
-  for(const pair of [['Σύστημα','Quadruplex · εγκάρσια σάρωση'],['Πλάτος ταινίας','2 in · 50,8 mm'],['Ταχύτητα ταινίας','15 in/s · 38,1 cm/s'],['Κεφαλές εικόνας','4 περιστρεφόμενες, ανά 90°'],['Τύμπανο (σύστημα 525 γραμμών)','περίπου 14.400 στροφές/λεπτό'],['Ρυθμός σάρωσης','περίπου 960 εγκάρσιες σαρώσεις/s'],['Εικόνα','Διαμόρφωση συχνότητας (FM)'],['Επαφή με τις κεφαλές','Κοίλος οδηγός κενού']]){
-   const row=table.insertRow();for(const value of pair)row.insertCell().textContent=value;
-  }
-  detail.append(table);
- }
- const sources=$('#factLinks');sources.replaceChildren();
- for(const [label,url] of links){const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=label+' ↗';sources.append(link,' ')}
+ const [title,body,trivia]=componentPages[tag];
+ $('#factTitle').textContent=title;
+ const text=$('#factText');text.textContent=body;
+ const note=document.createElement('span');note.className='trivia';note.textContent=trivia;
+ const label=document.createElement('strong');label.textContent='Γνωρίζατε; ';note.prepend(label);
+ text.append(document.createElement('br'),document.createElement('br'),note);
+ $('#factLinks').replaceChildren();
+ info.querySelector('.eyebrow').textContent='Μέρος του μηχανήματος';
  info.querySelector('nav').hidden=true;
 }
-info.addEventListener('close',()=>info.querySelector('nav').hidden=false);
-for(const [tag,index] of [['Ιστορία',0],['Τροφοδότρια',1],['Περιέλιξη',2],['Κεφαλές',3]])
- stage.querySelector('[data-tag="'+tag+'"]').onclick=()=>showComponent(index);
+info.addEventListener('close',()=>{info.querySelector('nav').hidden=false;info.querySelector('.eyebrow').textContent='15 σελίδες τεχνικής ιστορίας'});
+for(const tag of Object.keys(componentPages))stage.querySelector('[data-tag="'+tag+'"]').onclick=()=>showComponent(tag);
+stage.querySelector('[data-tag="Ιστορία"]').onclick=()=>showFact(0);
 
 
 

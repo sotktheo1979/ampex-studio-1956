@@ -427,9 +427,11 @@ function drawThreadedFilm(g,image,phase,blur){
     // at spooling speed individual pictures smear into an even band
     g.globalAlpha=.7;g.drawImage(image,0,-height/2,length,height);
    }else{
-    const offset=((distance+phase)%pitch+pitch)%pitch;
+    // frames sit at fixed places on the tape: as the tape advances (phase grows)
+    // they move downstream, left to right, exactly like the reels pull it
+    const offset=((phase-distance)%pitch+pitch)%pitch;
     g.globalAlpha=.76*(1-blur*.5);
-    for(let u=-offset;u<length;u+=pitch)g.drawImage(image,u,-height/2,pitch+.04,height);
+    for(let u=offset-pitch;u<length;u+=pitch)g.drawImage(image,u,-height/2,pitch+.04,height);
     if(blur>0){g.globalAlpha=blur*.5;g.drawImage(image,0,-height/2,length,height)}
    }
    g.restore();distance+=length;

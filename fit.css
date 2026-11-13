@@ -37,3 +37,6 @@ header{border-radius:12px 12px 0 0}.dock{border-radius:0 0 12px 12px;padding:5px
 /* Large and 4K displays: keep the studio chrome legible next to the full-size machine. */
 @media (min-width:2200px) and (min-height:1100px){header,.tray,.dock{zoom:1.45}}
 @media (min-width:3000px) and (min-height:1500px){header,.tray,.dock{zoom:1.9}}
+
+#factText .trivia{display:block;color:#e2cfa2;font-size:.95em;line-height:1.7}#factText .trivia strong{color:#f2dcae;font-weight:600}
+dialog nav[hidden]{display:none}
