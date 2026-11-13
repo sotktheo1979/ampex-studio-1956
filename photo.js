@@ -56,7 +56,17 @@ function prepareReels(){
  surfaces.length=0;
  for(const [x,y,rx,ry,slant] of geometry.reels){
   const tile=document.createElement('canvas');tile.width=tile.height=768;
-  const g=tile.getContext('2d');g.translate(384,384);g.scale(384/rx,384/ry);g.rotate(-slant);g.drawImage(photo,-x,-y,960,540);surfaces.push(solidReelFace(tile))
+  const g=tile.getContext('2d');g.translate(384,384);g.scale(384/rx,384/ry);g.rotate(-slant);g.drawImage(photo,-x,-y,960,540);
+  solidReelFace(tile);
+  // Punch actual alpha holes into the photographed upper metal flange.
+  // The metal and its three apertures become ONE rigid, rotating image.
+  g.setTransform(384,0,0,384,384,384);
+  g.globalCompositeOperation='destination-out';
+  for(let k=0;k<3;k++){
+   g.save();g.rotate(k*2*Math.PI/3);g.fill(reelOpening);g.restore();
+  }
+  g.globalCompositeOperation='source-over';
+  surfaces.push(tile)
  }
 }
 photo.addEventListener('load',prepareReels);if(photo.complete&&photo.naturalWidth)prepareReels();
@@ -169,22 +179,41 @@ function animateStudio(now){
    g.drawImage(photo,(x-rx)*sx,y*sy,rx*2*sx,(ry+16)*sy,-rx,0,rx*2,ry+16);
   }
   g.restore();
-  g.scale(rx,ry);g.beginPath();g.arc(0,0,1,0,2*Math.PI);g.clip();
-  g.drawImage(surfaces[i],-1,-1,2,2);
-  const rotation=angle*Math.PI/180*(i?1.08:1);
-  for(let k=0;k<3;k++){
-   g.save();g.rotate(rotation+k*2*Math.PI/3);
-   g.clip(reelOpening);
-   const backing=g.createRadialGradient(0,0,.25,0,0,.9);
-   backing.addColorStop(0,'#564d42');backing.addColorStop(1,'#80766a');
-   g.fillStyle=backing;g.fillRect(-1,-1,2,2);
-   g.beginPath();g.arc(0,0,radius,0,2*Math.PI);
-   g.fillStyle='#38281f';g.fill();
-   for(let r=.32;r<Math.min(radius,.87);r+=.027){
-    g.beginPath();g.arc(0,0,r,0,2*Math.PI);g.strokeStyle='#49372a';g.lineWidth=.005;g.stroke();
-   }
-   g.strokeStyle='#352c24';g.lineWidth=.017;g.stroke(reelOpening);g.restore();
+  g.scale(rx,ry);
+  g.beginPath();g.arc(0,0,1,0,2*Math.PI);g.clip();
+  // Opaque lower plate conceals the old photographed hole shapes.
+  const under=g.createRadialGradient(-.25,-.28,.05,.1,.13,1);
+  under.addColorStop(0,'#998c78');under.addColorStop(.64,'#62594b');under.addColorStop(1,'#292821');
+  g.fillStyle=under;g.fillRect(-1,-1,2,2);
+  // Tape is a separate stationary, wound pack. Its radius follows real
+  // footage transfer, with the two reels changing in opposite directions.
+  const pack=g.createRadialGradient(-.12,-.16,.02,0,0,Math.max(.3,radius));
+  pack.addColorStop(0,'#29251d');pack.addColorStop(.4,'#514231');
+  pack.addColorStop(.88,'#4a3828');pack.addColorStop(1,'#201b17');
+  g.beginPath();g.arc(0,0,radius,0,Math.PI*2);
+  g.fillStyle=pack;g.fill();
+  g.save();g.beginPath();g.arc(0,0,radius,0,Math.PI*2);g.clip();
+  for(let r=.28;r<radius;r+=.012){
+   g.beginPath();g.arc(0,0,r,0,Math.PI*2);
+   g.lineWidth=.003+(.002*Math.sin(r*370));
+   g.strokeStyle=(Math.round(r*100)%3===0)?'rgba(196,150,100,.34)':'rgba(30,22,19,.48)';
+   g.stroke();
   }
+  g.restore();
+  // The transparent apertures and the steel itself rotate together;
+  // no separate moving or painted gap shapes can overlap the flange.
+  const rotation=angle*Math.PI/180*(i?1.08:1);
+  g.save();g.rotate(rotation);
+  g.drawImage(surfaces[i],-1,-1,2,2);
+  g.restore();
+  // Subtle stationary environment reflection, with metal edge fully intact.
+  const reflected=g.createLinearGradient(-.7,-1,.8,1);
+  reflected.addColorStop(0,'rgba(255,244,213,.045)');
+  reflected.addColorStop(.55,'rgba(255,255,255,0)');
+  reflected.addColorStop(1,'rgba(12,13,12,.08)');
+  g.fillStyle=reflected;g.beginPath();g.arc(0,0,1,0,Math.PI*2);g.fill();
+  g.beginPath();g.arc(0,0,.995,0,Math.PI*2);
+  g.strokeStyle='rgba(231,220,189,.35)';g.lineWidth=.006;g.stroke();
   g.restore()
  });
  if (loaded && typeof programs !== 'undefined' && programs[loaded]) {
