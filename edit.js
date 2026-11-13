@@ -1,6 +1,6 @@
-// Original four-bar lounge arrangement, synthesized locally after the music switch is pressed.
+// Original sixteen-bar jazz arrangement, synthesized locally after the music switch is pressed.
 let musicOn=false,musicBus=null,musicTimer=null,nextBeat=0,beatNumber=0;
-const chords=[[50,57,60,64,67],[43,53,57,59,64],[48,55,59,62,64],[45,55,58,61,64]];
+const chords=[[50,53,57,60,64],[43,53,59,62,69],[48,52,55,59,62],[45,55,61,64,70],[50,53,57,60,65],[43,53,59,62,68],[52,55,59,62,66],[45,55,61,64,67],[53,57,60,64,67],[46,56,62,65,69],[52,55,59,62,67],[45,55,61,64,70],[50,53,57,60,64],[43,53,59,62,69],[48,52,57,59,64],[45,55,61,64,70]];
 function note(at,pitch,seconds,level,type='sine'){
  const oscillator=audio.createOscillator(),envelope=audio.createGain();
  oscillator.type=type;oscillator.frequency.value=440*Math.pow(2,(pitch-69)/12);
@@ -9,15 +9,25 @@ function note(at,pitch,seconds,level,type='sine'){
 }
 function scheduleBand(){
  if(!musicOn)return;
- const eighth=60/82/2;
+ const eighth=60/112/2;
  if(nextBeat<audio.currentTime)nextBeat=audio.currentTime+.03;
  while(nextBeat<audio.currentTime+.25){
-  const bar=Math.floor(beatNumber/8)%4,step=beatNumber%8,chord=chords[bar];
-  if(step===0||step===4)note(nextBeat,chord[0]-(step===0?12:5),.48,.2);
-  if([1,4,7].includes(step))chord.slice(1).forEach((n,i)=>note(nextBeat+i*.009,n,.46,.043,'triangle'));
-  if([2,5].includes(step))note(nextBeat,chord[2+(bar+step)%3]+12,.72,.05);
-  note(nextBeat,100,.023,step%2?.016:.009,'triangle');
-  beatNumber++;nextBeat+=eighth
+  const bar=Math.floor(beatNumber/8)%chords.length,step=beatNumber%8,chord=chords[bar];
+  const at=nextBeat+(step%2?eighth*.26:0);
+  if(step%2===0){
+   const walk=[chord[0]-12,chord[1]-12,chord[2]-12,chords[(bar+1)%16][0]-13];
+   note(at,walk[step/2],.38,.19);
+  }
+  if((bar%2?[2,5]:[0,3,7]).includes(step))
+   chord.slice(1).forEach((pitch,i)=>note(at+i*.013,pitch,.32,.035,'triangle'));
+  const phrase=[[1,3,4,7],[0,2,5],[2,4,6],[1,4],[0,3,5,7],[2,5],[0,2,3,6],[4]];
+  const index=phrase[bar%8].indexOf(step);
+  if(index>=0){
+   const pitch=chord[1+(bar+index)%4]+12;
+   note(at,pitch,step===4?.6:.29,.085);
+   note(at,pitch+12,.11,.014,'triangle');
+  }
+  beatNumber++;nextBeat+=eighth;
  }
 }
 const musicButton=document.createElement('button');musicButton.className='music-switch';musicButton.textContent='Μουσική · Όχι';musicButton.setAttribute('aria-pressed','false');bar.append(musicButton);
