@@ -196,10 +196,14 @@ function moveHardware(now){
   l.value+=((l.read()?1:0)-l.value)*(1-Math.exp(-dt*22));
   const g=l.paint;g.clearRect(0,0,10,30);
   if(l.value<.01)continue;
-  samplePlate(g,l.x-10,l.y,10,16,0,0);
+  // Remove only the upright stem above the collar. Leave the original
+  // photographic rim intact on both sides and across its upper arc.
+  g.save();g.beginPath();g.roundRect(2.4,0,5.2,12,2);g.clip();
+  samplePlate(g,l.x-10,l.y,10,12,0,0);g.restore();
   // Reproject the photographed shaft around its fixed collar.
   const projection=Math.cos(Math.PI*l.value);
   g.save();g.translate(0,16);g.scale(1,projection);
+  g.beginPath();g.roundRect(2.4,-15,5.2,15,2.4);g.clip();
   samplePlate(g,l.x,l.y,10,15,0,-15);
   g.restore();
  }
@@ -247,3 +251,30 @@ const shelfShade=document.createElement('div');
 shelfShade.className='shelf-shade';
 shelfShade.setAttribute('aria-hidden','true');
 place(shelfShade,0,0,246,310);
+
+const museum='https://collection.sciencemuseumgroup.org.uk/objects/co34573/ampex-videotape-recorder-type-vr-1000a';
+const quadArticle='https://www.worldradiohistory.com/Archive-All-Audio/Archive-Studio-Sound/60s/Studio-Sound-1967-12.pdf';
+const componentPages=[
+ ['Ιστορία της Ampex','Το 1956 στο Σικάγο, η ομάδα του Charles Ginsburg παρουσίασε το πρωτότυπο VRX-1000. Ο VR-1000 παραγωγής επέτρεψε στα τηλεοπτικά δίκτυα να καταγράφουν εκπομπές σε μαγνητική ταινία και να τις μεταδίδουν ξανά.',[['Computer History Museum',facts[0][3]]]],
+ ['Τροφοδότρια μπομπίνα','Η αριστερή μπομπίνα τροφοδοτεί τη διαδρομή με ταινία πλάτους 50,8 mm. Στην κανονική εγγραφή περνούν 38,1 cm ταινίας ανά δευτερόλεπτο. Η γρήγορη εγκάρσια κίνηση των κεφαλών επιτρέπει την εγγραφή εικόνας σε αυτή τη σχετικά χαμηλή γραμμική ταχύτητα.',[['Science Museum Group',museum]]],
+ ['Μπομπίνα περιέλιξης','Η δεξιά μπομπίνα συλλέγει την ταινία μετά τις κεφαλές. Καθώς μεγαλώνει η διάμετρος της περιέλιξης, χρειάζονται λιγότερες στροφές για να συλλεχθεί το ίδιο μήκος. Στα 15 in/s, ένα λεπτό εκπομπής καταλαμβάνει περίπου 22,9 μέτρα ταινίας.',[['Science Museum Group',museum]]],
+ ['Κεφαλές · Τεχνικό δελτίο VR-1000','', [['Studio Sound · 1967',quadArticle],['Computer History Museum',facts[0][3]],['Science Museum Group',museum]]]
+];
+function showComponent(index){
+ showFact(0);
+ const [title,body,links]=componentPages[index];
+ $('#factTitle').textContent=title;const detail=$('#factText');detail.textContent=body;
+ if(index===3){
+  const table=document.createElement('table');table.style.cssText='width:100%;text-align:left;border-spacing:.5em .3em';
+  for(const pair of [['Σύστημα','Quadruplex · εγκάρσια σάρωση'],['Πλάτος ταινίας','2 in · 50,8 mm'],['Ταχύτητα ταινίας','15 in/s · 38,1 cm/s'],['Κεφαλές εικόνας','4 περιστρεφόμενες, με πυρήνα φερρίτη'],['Τύμπανο (σύστημα 525 γραμμών)','περίπου 14.400 στροφές/λεπτό'],['Ρυθμός σάρωσης','περίπου 960 εγκάρσιες σαρώσεις/s'],['Εικόνα','Διαμόρφωση συχνότητας (FM)'],['Επαφή με τις κεφαλές','Κοίλος οδηγός κενού']]){
+   const row=table.insertRow();for(const value of pair)row.insertCell().textContent=value;
+  }
+  detail.append(table);
+ }
+ const sources=$('#factLinks');sources.replaceChildren();
+ for(const [label,url] of links){const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.textContent=label+' ↗';sources.append(link,' ')}
+ info.querySelector('nav').hidden=true;
+}
+info.addEventListener('close',()=>info.querySelector('nav').hidden=false);
+for(const [tag,index] of [['Ιστορία',0],['Τροφοδότρια',1],['Περιέλιξη',2],['Κεφαλές',3]])
+ stage.querySelector('[data-tag="'+tag+'"]').onclick=()=>showComponent(index);
