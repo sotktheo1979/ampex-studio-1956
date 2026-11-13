@@ -33,7 +33,11 @@ function prepareReels(){
 photo.addEventListener('load',prepareReels);if(photo.complete&&photo.naturalWidth)prepareReels();
 function resizeLive(){
  const density=Math.min(4,Math.max(1,stage.getBoundingClientRect().width*devicePixelRatio/960));
- liveCanvas.width=Math.round(960*density);liveCanvas.height=Math.round(540*density)
+ const w=Math.round(960*density),h=Math.round(540*density);
+ if(liveCanvas.width===w&&liveCanvas.height===h)return;
+ const previous=document.createElement('canvas');previous.width=liveCanvas.width;previous.height=liveCanvas.height;
+ previous.getContext('2d').drawImage(liveCanvas,0,0);
+ liveCanvas.width=w;liveCanvas.height=h;livePaint.drawImage(previous,0,0,w,h)
 }
 new ResizeObserver(resizeLive).observe(room);resizeLive();
 // Keep a representative exposure available even when the transport is stopped.
