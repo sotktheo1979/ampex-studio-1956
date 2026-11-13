@@ -47,11 +47,11 @@ function solidReelFace(tile){
  ctx.putImageData(pixels,0,0);return tile;
 }
 const reelOpening=new Path2D();
-reelOpening.moveTo(.39,-.13);reelOpening.quadraticCurveTo(.39,-.17,.44,-.18);
-reelOpening.lineTo(.76,-.27);reelOpening.quadraticCurveTo(.82,-.28,.83,-.22);
-reelOpening.arc(0,0,.86,-.26,.26);
-reelOpening.quadraticCurveTo(.82,.28,.76,.27);reelOpening.lineTo(.44,.18);
-reelOpening.quadraticCurveTo(.39,.17,.39,.13);reelOpening.closePath();
+reelOpening.moveTo(.48,-.105);reelOpening.quadraticCurveTo(.48,-.14,.52,-.15);
+reelOpening.lineTo(.73,-.21);reelOpening.quadraticCurveTo(.77,-.22,.78,-.18);
+reelOpening.arc(0,0,.80,-.22,.22);
+reelOpening.quadraticCurveTo(.77,.22,.73,.21);reelOpening.lineTo(.52,.15);
+reelOpening.quadraticCurveTo(.48,.14,.48,.105);reelOpening.closePath();
 function prepareReels(){
  surfaces.length=0;
  for(const [x,y,rx,ry,slant] of geometry.reels){
@@ -185,25 +185,44 @@ function animateStudio(now){
   const under=g.createRadialGradient(-.25,-.28,.05,.1,.13,1);
   under.addColorStop(0,'#998c78');under.addColorStop(.64,'#62594b');under.addColorStop(1,'#292821');
   g.fillStyle=under;g.fillRect(-1,-1,2,2);
-  // Tape is a separate stationary, wound pack. Its radius follows real
-  // footage transfer, with the two reels changing in opposite directions.
-  const pack=g.createRadialGradient(-.12,-.16,.02,0,0,Math.max(.3,radius));
-  pack.addColorStop(0,'#29251d');pack.addColorStop(.4,'#514231');
-  pack.addColorStop(.88,'#4a3828');pack.addColorStop(1,'#201b17');
+  // The magnetic tape is the same warm, smoke-brown material as the
+  // threaded ribbon below: light passes softly through its thin edges,
+  // while overlapping turns darken into a dense wound pack.
+  const pack=g.createRadialGradient(-.21,-.25,.08,.05,.12,Math.max(.31,radius));
+  pack.addColorStop(0,'rgba(118,78,52,.92)');
+  pack.addColorStop(.50,'rgba(102,65,42,.95)');
+  pack.addColorStop(.83,'rgba(77,48,32,.97)');
+  pack.addColorStop(1,'rgba(47,33,25,.96)');
   g.beginPath();g.arc(0,0,radius,0,Math.PI*2);
   g.fillStyle=pack;g.fill();
   g.save();g.beginPath();g.arc(0,0,radius,0,Math.PI*2);g.clip();
-  for(let r=.28;r<radius;r+=.012){
+  // Hundreds of fine, slightly uneven concentric turns instead of
+  // a flat brown disc or oversized painted rings.
+  for(let r=.275;r<radius;r+=.0065){
    g.beginPath();g.arc(0,0,r,0,Math.PI*2);
-   g.lineWidth=.003+(.002*Math.sin(r*370));
-   g.strokeStyle=(Math.round(r*100)%3===0)?'rgba(196,150,100,.34)':'rgba(30,22,19,.48)';
+   g.lineWidth=.0023;
+   g.strokeStyle=(Math.round(r*1000)%5===0)?
+     'rgba(205,151,103,.29)':'rgba(28,21,17,.33)';
    g.stroke();
   }
+  const tapeLight=g.createLinearGradient(-.9,-.7,.8,.9);
+  tapeLight.addColorStop(0,'rgba(219,171,118,.14)');
+  tapeLight.addColorStop(.42,'rgba(154,100,62,.035)');
+  tapeLight.addColorStop(1,'rgba(10,9,7,.23)');
+  g.fillStyle=tapeLight;g.fillRect(-1,-1,2,2);
   g.restore();
   // The transparent apertures and the steel itself rotate together;
   // no separate moving or painted gap shapes can overlap the flange.
   const rotation=angle*Math.PI/180*(i?1.08:1);
   g.save();g.rotate(rotation);
+  // Restrict the rotating steel to an annulus. The spindle hub
+  // remains fixed and perfectly centred, and cannot be crossed by gaps.
+  g.beginPath();g.arc(0,0,.97,0,Math.PI*2);
+  g.arc(0,0,.355,0,Math.PI*2,true);g.clip('evenodd');
+  g.drawImage(surfaces[i],-1,-1,2,2);
+  g.restore();
+  // Reuse the authentic photographic spindle without rotating it.
+  g.save();g.beginPath();g.arc(0,0,.345,0,Math.PI*2);g.clip();
   g.drawImage(surfaces[i],-1,-1,2,2);
   g.restore();
   // Subtle stationary environment reflection, with metal edge fully intact.
