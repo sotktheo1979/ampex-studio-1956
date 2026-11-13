@@ -177,3 +177,29 @@ function animateMeters(now){
  requestAnimationFrame(animateMeters);
 }
 requestAnimationFrame(animateMeters);
+
+// Handle a second press as a release, independently of the transport's idle STOP mode.
+let latchedKey=null;
+function syncTransportKeys(){
+ for(const key of document.querySelectorAll('button[data-mode]')){
+  const down=!!power && latchedKey===key.dataset.mode;
+  key.classList.toggle('active',down);
+  key.setAttribute('aria-pressed',String(down));
+ }
+}
+const setLatchedTransport=setMode;
+setMode=function(next){
+ setLatchedTransport(next);
+ latchedKey=power && loaded && mode===next ? next : (power ? latchedKey : null);
+ syncTransportKeys();
+};
+document.addEventListener('click',event=>{
+ const key=event.target.closest('button[data-mode]');
+ if(!key || key.disabled || !power || key.dataset.mode!==latchedKey)return;
+ event.preventDefault();
+ event.stopImmediatePropagation();
+ setMode('stop');
+ latchedKey=null;
+ syncTransportKeys();
+},true);
+syncTransportKeys();
