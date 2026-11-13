@@ -157,26 +157,62 @@ setMode=function(next){
  recordingStart=mode==='record'?{reel:loaded,start:position}:null;
 
 };
-const meterNeedles=[{x:313,y:313,phase:0},{x:380,y:313,phase:1.8}].map(({x,y,phase})=>{
- const needle=document.createElement('span');
- needle.setAttribute('aria-hidden','true');
- needle.style.cssText='position:absolute;pointer-events:none;background:#37291c;width:.12%;height:2.5%;transform-origin:center bottom;z-index:2';
- place(needle,x,y-14,.95,14);
- return {needle,phase,angle:-48};
-});
-let meterTime=performance.now();
-function animateMeters(now){
- const dt=Math.min(.1,(now-meterTime)/1000);meterTime=now;
- const active=power && (mode==='play'||mode==='record');
- for(const m of meterNeedles){
-  const t=position;
-  const target=active?-8+22*Math.sin(t*5+m.phase)+12*Math.sin(t*11+m.phase): -48;
-  m.angle+=(target-m.angle)*(1-Math.exp(-dt*(target>m.angle?16:7)));
-  m.needle.style.transform='rotate('+m.angle+'deg)';
- }
- requestAnimationFrame(animateMeters);
+// All measurements use the plate's native 960-by-540 coordinate system.
+const hardwareDials=[...stage.querySelectorAll('.physical-dial')];
+function hardwareSurface(x,y,w,h){
+ const surface=document.createElement('canvas');
+ surface.width=w*4;surface.height=h*4;
+ surface.style.cssText='position:absolute;pointer-events:none;z-index:1';
+ place(surface,x,y,w,h);
+ const paint=surface.getContext('2d');paint.scale(4,4);
+ return {surface,paint,x,y,w,h};
 }
-requestAnimationFrame(animateMeters);
+function samplePlate(p,x,y,w,h,dx,dy,dw=w,dh=h){
+ const sx=photo.naturalWidth/960, sy=photo.naturalHeight/540;
+ p.drawImage(photo,x*sx,y*sy,w*sx,h*sy,dx,dy,dw,dh);
+}
+const knobs=[
+ [635,332,()=>tracking*2.5],
+ [688,333,()=>monitorElement.classList.contains('focused')?62:0],
+ [745,333,()=>musicOn?65:0]
+].map(([x,y,read])=>({...hardwareSurface(x-13,y-13,26,26),read,angle:0}));
+const levers=[
+ [236,307,()=>!power],[657,299,()=>zoom>1],[700,300,()=>!stage.classList.contains('labelled')],[752,299,()=>panel===1]
+].map(([x,y,read])=>({...hardwareSurface(x-5,y-16,10,30),read,value:0}));
+hardwareDials[hardwareDials.length-1].onclick=()=>switchPanel(panel===1?0:1);
+const meters=[287,354].map((x,i)=>({...hardwareSurface(x-24,303,48,25),phase:i*1.8,angle:-25}));
+let hardwareTime=performance.now();
+function moveHardware(now){
+ requestAnimationFrame(moveHardware);
+ if(!photo.naturalWidth||now-hardwareTime<22)return;
+ const dt=Math.min(.1,(now-hardwareTime)/1000);hardwareTime=now;
+ for(const k of knobs){
+  k.angle+=(k.read()-k.angle)*(1-Math.exp(-dt*18));
+  const g=k.paint;g.clearRect(0,0,26,26);g.save();g.translate(13,13);
+  g.beginPath();g.arc(0,0,12.4,0,Math.PI*2);g.clip();g.rotate(k.angle*Math.PI/180);
+  samplePlate(g,k.x,k.y,26,26,-13,-13);g.restore();
+ }
+ for(const l of levers){
+  l.value+=((l.read()?1:0)-l.value)*(1-Math.exp(-dt*22));
+  const g=l.paint;g.clearRect(0,0,10,30);
+  if(l.value<.01)continue;
+  samplePlate(g,l.x-10,l.y,10,16,0,0);
+  g.save();g.translate(0,16);g.scale(1,1-1.75*l.value);
+  samplePlate(g,l.x,l.y,10,16,0,-16);g.restore();
+ }
+ for(const m of meters){
+  const g=m.paint;g.clearRect(0,0,48,25);
+  // Restore the narrow diagonal occupied by the photographed pointer from adjacent paper.
+  g.save();g.beginPath();g.moveTo(12,4);g.lineTo(16,4);g.lineTo(25,23);g.lineTo(21,23);g.closePath();g.clip();
+  samplePlate(g,m.x+4,m.y,48,25,0,0);g.restore();
+  const active=power&&(mode==='record'||mode==='play');
+  const target=active?-4+21*Math.sin(position*4+m.phase)+12*Math.sin(position*9+m.phase):-25;
+  m.angle+=(target-m.angle)*(1-Math.exp(-dt*(target>m.angle?17:6)));
+  g.save();g.translate(24,23);g.rotate(m.angle*Math.PI/180);g.strokeStyle='#46352b';g.lineWidth=.8;
+  g.beginPath();g.moveTo(0,0);g.lineTo(0,-20);g.stroke();g.restore();
+ }
+}
+requestAnimationFrame(moveHardware);
 
 // Handle a second press as a release, independently of the transport's idle STOP mode.
 let latchedKey=null;
