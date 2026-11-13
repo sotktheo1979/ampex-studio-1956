@@ -23,11 +23,25 @@ for(const [id,x,y,w,h] of geometry.keys){
  place(key,x,y,w,h)
 }
 const surfaces=[];
+const emptyWindows=[];
+function makeBareWindows(tile){
+ const bare=document.createElement('canvas');bare.width=bare.height=768;
+ const ctx=bare.getContext('2d'),data=tile.getContext('2d').getImageData(0,0,768,768);
+ for(let y=0;y<768;y++)for(let x=0;x<768;x++){
+  const j=(y*768+x)*4,r=Math.hypot(x-384,y-384)/384;
+  const level=(data.data[j]*.3+data.data[j+1]*.59+data.data[j+2]*.11);
+  const opacity=Math.min(1,Math.max(0,(85-level)/32));
+  data.data[j+3]=r>.27&&r<.92?Math.round(opacity*255):0;
+  const metal=99+24*(1-r)+level*.48+4*Math.sin(y*.73);
+  data.data[j]=metal;data.data[j+1]=metal*.91;data.data[j+2]=metal*.79;
+ }
+ ctx.putImageData(data,0,0);return bare;
+}
 function prepareReels(){
- surfaces.length=0;
+ surfaces.length=0; emptyWindows.length=0;
  for(const [x,y,rx,ry,slant] of geometry.reels){
   const tile=document.createElement('canvas');tile.width=tile.height=768;
-  const g=tile.getContext('2d');g.translate(384,384);g.scale(384/rx,384/ry);g.rotate(-slant);g.drawImage(photo,-x,-y,960,540);surfaces.push(tile)
+  const g=tile.getContext('2d');g.translate(384,384);g.scale(384/rx,384/ry);g.rotate(-slant);g.drawImage(photo,-x,-y,960,540);surfaces.push(tile);emptyWindows.push(makeBareWindows(tile))
  }
 }
 photo.addEventListener('load',prepareReels);if(photo.complete&&photo.naturalWidth)prepareReels();
@@ -120,9 +134,29 @@ function animateStudio(now){
  if(now-lastDraw<32||document.hidden)return;lastDraw=now;
  const g=livePaint;g.setTransform(liveCanvas.width/960,0,0,liveCanvas.height/540,0,0);g.clearRect(0,0,960,540);
  geometry.reels.forEach(([x,y,rx,ry,slant],i)=>{
-  if(!loaded||!surfaces[i]||angle===0)return;
-  g.save();g.translate(x,y);g.rotate(slant);g.scale(rx,ry);g.beginPath();g.arc(0,0,1,0,2*Math.PI);g.clip();
-  g.rotate(angle*Math.PI/180*(i?1.08:1));g.drawImage(surfaces[i],-1,-1,2,2);g.restore()
+  if(!loaded||!surfaces[i])return;
+  const fraction=Math.max(0,Math.min(1,position/1800));
+  const held=i?fraction:1-fraction;
+  const core=.27, outer=.98;
+  const radius=Math.sqrt(core*core+held*(outer*outer-core*core));
+  g.save();g.translate(x,y);g.rotate(slant);
+  // Reveal the lower flange outside the wound pack. The upper flange
+  // occludes the rear half and the front of the pack slopes into view.
+  g.save();g.beginPath();g.ellipse(0,0,rx,ry,0,0,Math.PI);
+  g.ellipse(0,13,rx*.99,ry,0,Math.PI,0,true);g.closePath();g.clip();
+  const flange=g.createLinearGradient(-rx,0,rx,0);
+  for(const [stop,color] of [[0,'#443d35'],[.20,'#908373'],[.49,'#b4a692'],[.72,'#897b6c'],[1,'#493f34']])flange.addColorStop(stop,color);
+  g.fillStyle=flange;g.fillRect(-rx,0,2*rx,ry+14);
+  if(held>0){
+   g.beginPath();g.ellipse(0,12,rx*radius,ry*radius,0,0,2*Math.PI);g.clip();
+   // Retain the original light and texture of the full wound tape.
+   g.drawImage(photo,x-rx,y,rx*2,ry+16,-rx,0,rx*2,ry+16);
+  }
+  g.restore();
+  g.scale(rx,ry);g.beginPath();g.arc(0,0,1,0,2*Math.PI);g.clip();
+  g.rotate(angle*Math.PI/180*(i?1.08:1));g.drawImage(surfaces[i],-1,-1,2,2);
+  g.beginPath();g.arc(0,0,1,0,2*Math.PI);g.arc(0,0,radius,0,2*Math.PI,true);g.clip('evenodd');
+  g.drawImage(emptyWindows[i],-1,-1,2,2);g.restore()
  });
  if (loaded && typeof programs !== 'undefined' && programs[loaded]) {
   const still = tintExposure(tapeStill(loaded));
