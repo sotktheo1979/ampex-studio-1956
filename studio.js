@@ -109,9 +109,38 @@ consoleRec.dataset.mode='record';
 consoleRec.setAttribute('aria-label','REC');
 consoleRec.setAttribute('aria-pressed','false');
 consoleRec.title='REC';
-consoleRec.textContent='REC';
-consoleRec.style.cssText='position:absolute;z-index:5;padding:0;border:2px solid #34251e;border-radius:3px;background:linear-gradient(#a44533,#762820 65%,#4c1812);color:#f3d5ac;font:bold clamp(7px,.85vw,14px) Arial;box-shadow:inset 0 1px 1px #d48869,0 2px 2px #17150f;cursor:pointer';
-place(consoleRec,593,318,25,30);
+consoleRec.className='hit-key';
+consoleRec.dataset.tag='REC';
+stage.append(consoleRec);
+
+// Use adjacent slices of the original console photograph so the key caps,
+// front bevels and shadows retain the same lighting as the rest of the deck.
+const keyStarts=[419,453,487,521,555,589];
+const keyModes=['rewind','stop','play','forward','pause','record'];
+function buildTransportKeys(){
+ if(!photo.naturalWidth)return;
+ const scaleX=photo.naturalWidth/960, scaleY=photo.naturalHeight/540;
+ keyModes.forEach((id,i)=>{
+  const key=stage.querySelector('[data-mode="'+id+'"]');
+  const sx=id==='record'?453:keyStarts[i];
+  place(key,keyStarts[i]-34,315,34,38);
+  Object.assign(key.style,{padding:'0',border:'0',borderRadius:'0',overflow:'visible',background:'transparent'});
+  const cap=document.createElement('canvas');
+  cap.width=136;cap.height=152;
+  cap.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
+  const g=cap.getContext('2d');
+  g.drawImage(photo,sx*scaleX,315*scaleY,34*scaleX,38*scaleY,0,0,136,152);
+  if(id==='record'){
+   g.drawImage(cap,22,25,14,31,48,24,43,32);
+   g.fillStyle='#f3d8ac';g.beginPath();g.arc(68,42,9,0,2*Math.PI);g.fill();
+  }
+  key.prepend(cap);
+ });
+}
+if(photo.complete)buildTransportKeys();else photo.addEventListener('load',buildTransportKeys,{once:true});
+const mechanicalStyle=document.createElement('style');
+mechanicalStyle.textContent='.stage-photo .hit-key canvas{transition:transform 80ms,filter 80ms;transform-origin:center bottom}.stage-photo .hit-key:active canvas,.stage-photo .hit-key[aria-pressed="true"] canvas{transform:translateY(3%) scaleY(.90);filter:brightness(.83)}';
+document.head.append(mechanicalStyle);
 consoleRec.onclick=()=>setMode('record');
 
 let recordingStart=null;
@@ -126,7 +155,7 @@ setMode=function(next){
   drawTakes();toast('Το απόσπασμα προστέθηκε στο Μοντάζ.');
  }
  recordingStart=mode==='record'?{reel:loaded,start:position}:null;
- consoleRec.style.background=mode==='record'?'linear-gradient(#ed7965,#a92d22)':'linear-gradient(#a44533,#762820 65%,#4c1812)';
+
 };
 const meterNeedles=[{x:313,y:313,phase:0},{x:380,y:313,phase:1.8}].map(({x,y,phase})=>{
  const needle=document.createElement('span');
