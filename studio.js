@@ -111,7 +111,7 @@ consoleRec.setAttribute('aria-pressed','false');
 consoleRec.title='REC';
 consoleRec.textContent='REC';
 consoleRec.style.cssText='position:absolute;z-index:5;padding:0;border:2px solid #34251e;border-radius:3px;background:linear-gradient(#a44533,#762820 65%,#4c1812);color:#f3d5ac;font:bold clamp(7px,.85vw,14px) Arial;box-shadow:inset 0 1px 1px #d48869,0 2px 2px #17150f;cursor:pointer';
-place(consoleRec,477,351,32,16);
+place(consoleRec,593,318,25,30);
 consoleRec.onclick=()=>setMode('record');
 
 let recordingStart=null;
