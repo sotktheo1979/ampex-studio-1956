@@ -20,7 +20,8 @@ function noPicture(t,spooling){
 draw=function(t){
  selectProgram();
  if(!power||!loaded||mode==='stop'){player.pause();ctx.fillStyle='#101511';ctx.fillRect(0,0,c.width,c.height);pictureRunning=false;return}
- const running=(mode==='play'||mode==='record')&&tapeSpeed>.95;
+ // leader carries no picture
+ const running=(mode==='play'||mode==='record')&&tapeSpeed>.95&&position>=0&&position<=TAPE_SECONDS;
  if(!running){player.pause();noPicture(t,Math.abs(tapeSpeed)>1.5);pictureRunning=false;return}
  if(!pictureRunning){pictureRunning=true;lockFrom=performance.now()}
  if(player.readyState<2||player.seeking){noPicture(t,false);return}

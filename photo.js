@@ -34,6 +34,9 @@ for(const [id,x,y,w,h] of geometry.keys){
 // of the photographed openings (see tools/build_reel_faces.py).
 // ---------------------------------------------------------------------------
 const reelFaces=new Image();reelFaces.decoding='async';reelFaces.src='reels.webp';
+// The same studio photographed with no reels or tape: where the tape has run out of
+// the path, this plate shows the bare guides and deck underneath.
+const bareDeck=new Image();bareDeck.decoding='async';bareDeck.src='empty.webp';
 const REELS=[
  // centre, radii, slant from geometry.js; d = depth of the lower flange below the
  // upper one on the plate (2-inch tape seen from the camera height); guide = where
@@ -250,9 +253,13 @@ function drawReel(g,r,R,rot,spinStep){
  // ---- 4. hub core -----------------------------------------------------------------
  cylinder(g,r,CORE,d,null,'#6a665e','#b9b3a6');
  // ---- 5. wound tape pack ----------------------------------------------------------
- cylinder(g,r,R,d,r.wall);
+ if(heldFraction(r.i)>0)cylinder(g,r,R,d,r.wall);
  // ---- 6. tape leaving the pack toward the guides -----------------------------------
- drawTail(g,r,R);
+ // the tape between this reel and its guide, if any tape is still on this reel;
+ // clear leader at the ends of the reel looks clear
+ // (none once the tape's end has left the path)
+ const t=r.i?position:tapeAtSupply();
+ if(heldFraction(r.i)>0&&t>TAPE_FIRST+.05&&t<TAPE_LAST-.05)drawTail(g,r,R,t<0||t>TAPE_SECONDS)
  // ---- 7. top flange ------------------------------------------------------------------
  g.save();g.beginPath();g.save();plateDisc(g,r,1.7);g.arc(0,0,1,0,Math.PI*2);g.restore();
  g.save();plateDisc(g,r,0);g.moveTo(1,0);g.arc(0,0,1,0,Math.PI*2);g.restore();g.translate(r.x,0);
@@ -295,7 +302,7 @@ function cylinder(g,r,R,d,texture,c0,c1){
 }
 // The 2-inch tape stands on edge: from the tangent point on the pack it runs to the
 // first guide, its upper and lower edges converging with perspective.
-function drawTail(g,r,R){
+function drawTail(g,r,R,clear){
  const [u,v]=tangentPoint(r,R,r.d/2),[tx,ty]=onDisc(r,u,v);
  // Seen almost edge-on the tape would be a hairline; the slight twist it takes
  // toward the guide shows a few pixels of its face, as on the photograph.
@@ -308,7 +315,8 @@ function drawTail(g,r,R){
  const mx=(top[0]+etop[0])/2,my=(top[1]+etop[1])/2;
  const across=g.createLinearGradient(mx,my,mx-nx/n*span*r.side,my-ny/n*span*r.side);
  across.addColorStop(0,'rgba(206,138,72,.94)');across.addColorStop(.4,'rgba(128,68,26,.9)');across.addColorStop(1,'rgba(64,32,12,.94)');
- g.fillStyle=across;g.fill();
+ if(clear){g.fillStyle='rgba(236,226,200,.16)';g.fill();g.lineWidth=.5;g.strokeStyle='rgba(255,248,226,.55)';g.stroke()}
+ else{g.fillStyle=across;g.fill()}
  g.lineWidth=.55;g.strokeStyle='rgba(255,214,150,.7)';g.beginPath();g.moveTo(...top);g.lineTo(...etop);g.stroke();
  g.lineWidth=.5;g.strokeStyle='rgba(30,14,5,.55)';g.beginPath();g.moveTo(...bot);g.lineTo(...ebot);g.stroke();
  g.restore();
@@ -440,6 +448,50 @@ function drawThreadedFilm(g,image,phase,blur){
 }
 
 // ---------------------------------------------------------------------------
+// TAPE PATH STATE — which stretches of the threaded path hold programme tape,
+// clear leader, or nothing at all (after the tape has run out).
+// ---------------------------------------------------------------------------
+const PATH=geometry.path,PATH_LEN=[0];
+for(let i=1;i<PATH.length;i++)PATH_LEN.push(PATH_LEN[i-1]+Math.hypot(PATH[i][0]-PATH[i-1][0],PATH[i][1]-PATH[i-1][1]));
+const PATH_TOTAL=PATH_LEN[PATH_LEN.length-1],PATH_PXS=PATH_TOTAL/PATH_SECONDS;
+function pathPoint(d){
+ d=Math.max(0,Math.min(PATH_TOTAL,d));let i=1;while(i<PATH.length-1&&PATH_LEN[i]<d)i++;
+ const f=(d-PATH_LEN[i-1])/(PATH_LEN[i]-PATH_LEN[i-1]||1),[x0,y0]=PATH[i-1],[x1,y1]=PATH[i];
+ const L=Math.hypot(x1-x0,y1-y0)||1;return [x0+(x1-x0)*f,y0+(y1-y0)*f,-(y1-y0)/L,(x1-x0)/L];
+}
+// band of the given half-height along the path between distances d0 and d1
+function pathBand(d0,d1,half){
+ const p=new Path2D(),top=[],bot=[],n=Math.max(2,Math.ceil((d1-d0)/4));
+ for(let k=0;k<=n;k++){const [x,y,nx,ny]=pathPoint(d0+(d1-d0)*k/n);top.push([x+nx*half,y+ny*half]);bot.push([x-nx*half,y-ny*half])}
+ top.forEach(([x,y],k)=>k?p.lineTo(x,y):p.moveTo(x,y));bot.reverse().forEach(([x,y])=>p.lineTo(x,y));p.closePath();return p;
+}
+// distance along the path of tape coordinate t (programme seconds)
+const pathDist=t=>PATH_TOTAL-(t-position)*PATH_PXS;
+function pathRanges(){
+ const clip=(a,b)=>{const lo=Math.max(0,Math.min(a,b)),hi=Math.min(PATH_TOTAL,Math.max(a,b));return hi>lo?[lo,hi]:null};
+ return {
+  programme:clip(pathDist(TAPE_SECONDS),pathDist(0)),
+  leaders:[clip(pathDist(0),pathDist(TAPE_FIRST)),clip(pathDist(TAPE_LAST),pathDist(TAPE_SECONDS))].filter(Boolean),
+  empty:[clip(pathDist(TAPE_FIRST),PATH_TOTAL+1),clip(-1,pathDist(TAPE_LAST))].filter(Boolean)
+ };
+}
+function drawPathState(g,ranges){
+ if(!bareDeck.naturalWidth)return;
+ const sx=bareDeck.naturalWidth/960,sy=bareDeck.naturalHeight/540;
+ // photographed tape is replaced by the bare deck wherever there is no oxide tape
+ for(const [a,b] of [...ranges.empty,...ranges.leaders]){
+  g.save();g.clip(pathBand(a,b,11));
+  g.drawImage(bareDeck,225*sx,170*sy,520*sx,45*sy,225,170,520,45);g.restore();
+  g.save();g.globalAlpha=.5;g.clip(pathBand(a,b,12.5));
+  g.drawImage(bareDeck,225*sx,170*sy,520*sx,45*sy,225,170,520,45);g.restore();
+ }
+ // clear leader: a nearly invisible ribbon that catches the light at its edges
+ for(const [a,b] of ranges.leaders){
+  g.save();g.fillStyle='rgba(240,232,210,.13)';g.fill(pathBand(a,b,6.4));
+  g.lineWidth=.55;g.strokeStyle='rgba(255,250,232,.5)';g.stroke(pathBand(a,b,6.4));
+  g.globalAlpha=.25;g.fillStyle='#fff8e6';g.fill(pathBand(a,b,.5));g.restore();
+ }
+}
 let livePainted=false;
 let lastScene='';
 function animateStudio(now){
@@ -447,7 +499,7 @@ function animateStudio(now){
  if(document.hidden||!reelsReady)return;
  // Nothing moves while the transport is still and the monitor is dark: keep the
  // last frame instead of repainting it, to spare the visitor's battery.
- const scene=[loaded,power,mode,position.toFixed(3),reelAngle[0].toFixed(4),reelAngle[1].toFixed(4),density,liveCanvas.width,facesOK,!!tapeStills.get(loaded),LAMPS.map(l=>l[4]()?1:0).join('')].join();
+ const scene=[loaded,power,mode,position.toFixed(3),reelAngle[0].toFixed(4),reelAngle[1].toFixed(4),density,liveCanvas.width,facesOK,!!bareDeck.naturalWidth,!!tapeStills.get(loaded),LAMPS.map(l=>l[4]()?1:0).join('')].join();
  const idle=!(power&&loaded&&mode!=='stop')&&Math.abs(tapeSpeed)<1e-4;
  if(idle&&scene===lastScene&&livePainted)return;
  lastScene=scene;
@@ -468,7 +520,11 @@ function animateStudio(now){
  if(loaded){
   if(typeof programs!=='undefined'&&programs[loaded]){
    const travel=position*PLATE_PX_PER_SECOND,perFrame=Math.abs(tapeSpeed)*PLATE_PX_PER_SECOND/60;
-   drawThreadedFilm(g,tintExposure(tapeStill(loaded)),travel,Math.min(1,Math.max(0,(perFrame-6)/14)));
+   const ranges=pathRanges();
+   drawPathState(g,ranges);
+   // the programme pictures appear only on the stretch of oxide tape
+   if(ranges.programme){g.save();g.clip(pathBand(...ranges.programme,9));
+    drawThreadedFilm(g,tintExposure(tapeStill(loaded)),travel,Math.min(1,Math.max(0,(perFrame-6)/14)));g.restore()}
   }
  }
  drawLamps(g);
