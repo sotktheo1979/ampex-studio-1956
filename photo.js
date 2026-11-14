@@ -405,12 +405,12 @@ const oxideTile=document.createElement('canvas');oxideTile.width=OXIDE_LEN*2;oxi
  const rows=[];for(let y=0;y<H;y++)rows.push((rnd()-.5)*.9);           // lengthwise coating streaks
  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
   const v=wave(x)*.6+rows[y]*.5+(rnd()-.5)*.35,o=(y*W+x)*4;
-  if(v>0){d[o]=190;d[o+1]=188;d[o+2]=182;d[o+3]=Math.min(255,v*40)}   // lighter, satin
+  if(v>0){d[o]=190;d[o+1]=188;d[o+2]=182;d[o+3]=Math.min(255,v*24)}   // lighter, satin
   else{d[o]=0;d[o+1]=0;d[o+2]=0;d[o+3]=Math.min(255,-v*70)}           // denser oxide
  }
  g.putImageData(img,0,0);
  // a few specks and one splice-like mark, so the motion reads clearly
- for(let k=0;k<9;k++){g.fillStyle='rgba(210,208,200,'+(.3+rnd()*.3)+')';g.fillRect(rnd()*W,2+rnd()*(H-4),1.2+rnd()*2,1)}
+ for(let k=0;k<9;k++){g.fillStyle='rgba(210,208,200,'+(.18+rnd()*.2)+')';g.fillRect(rnd()*W,2+rnd()*(H-4),1.2+rnd()*2,1)}
  g.fillStyle='rgba(200,190,175,.22)';g.fillRect(W*.62,0,3,H);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(W*.62+3,0,1,H);
 })();
 // Measured on the 960 × 540 plate. Each span ends behind a guide or housing.
@@ -420,22 +420,36 @@ const filmSpans=[
 ];
 // 15 in/s on the plate: flange of 12½ in ≈ 2 × 111 px → ≈ 17.8 px per inch.
 const PLATE_PX_PER_SECOND=15*17.8;
-// Solid, glossy black tape across its width: a bright edge where the light
-// catches it, a soft sheen band, then deep black. Nothing shows through it.
-let tapeGloss=null;
-function glossFor(g,height){
- if(tapeGloss)return tapeGloss;
- tapeGloss=g.createLinearGradient(0,-height/2,0,height/2);
- for(const [s,c] of [[0,'#8a8986'],[.07,'#1c1c1b'],[.2,'#2e2e2c'],[.3,'#5c5b58'],[.38,'#262625'],[.6,'#0c0c0c'],[.92,'#060606'],[1,'#3a3a38']])tapeGloss.addColorStop(s,c);
- return tapeGloss;
+// Solid black tape with a satin oxide finish. Across its 2-inch width: a thin,
+// slightly brighter cut edge top and bottom and a broad, low sheen. Along its
+// length the sheen follows the studio key light (above the head block), so it
+// brightens where a stretch faces the light and falls away where it turns aside.
+let tapeAcross=null;
+function acrossFor(g,height){
+ if(tapeAcross)return tapeAcross;
+ tapeAcross=g.createLinearGradient(0,-height/2,0,height/2);
+ for(const [s,c] of [[0,'#4b4a47'],[.045,'#1a1a19'],[.16,'#1d1d1c'],[.34,'#232322'],[.55,'#141414'],[.85,'#0b0b0b'],[.955,'#0d0d0d'],[1,'#33322f']])tapeAcross.addColorStop(s,c);
+ return tapeAcross;
+}
+const KEY_LIGHT_X=470;
+function sheenAt(px,angle){
+ // broad reflection of the overhead key light, stronger on stretches that tilt toward it
+ const lobe=Math.exp(-(((px-KEY_LIGHT_X)/190)**2)),tilt=.75+.25*Math.cos(angle*6);
+ return .03+.085*lobe*tilt;
 }
 function drawThreadedFilm(g,phase,blur){
  const height=13.6;
  for(const span of filmSpans){
   for(let i=1;i<span.length;i++){
-   const [x,y]=span[i-1],dx=span[i][0]-x,dy=span[i][1]-y,length=Math.hypot(dx,dy);
-   g.save();g.translate(x,y);g.rotate(Math.atan2(dy,dx));
-   g.fillStyle=glossFor(g,height);g.fillRect(0,-height/2,length,height);g.restore();
+   const [x,y]=span[i-1],dx=span[i][0]-x,dy=span[i][1]-y,length=Math.hypot(dx,dy),ang=Math.atan2(dy,dx);
+   g.save();g.translate(x,y);g.rotate(ang);
+   g.fillStyle=acrossFor(g,height);g.fillRect(0,-height/2,length,height);
+   // satin sheen along the length, concentrated in the upper half of the width
+   const along=g.createLinearGradient(0,0,length,0);
+   for(let k=0;k<=4;k++){const u=k/4;along.addColorStop(u,'rgba(214,212,206,'+sheenAt(x+dx*u,ang).toFixed(3)+')')}
+   g.fillStyle=along;g.fillRect(0,-height/2+1.1,length,height*.42);
+   g.globalAlpha=.5;g.fillRect(0,-height/2+1.1+height*.42,length,height*.18);
+   g.restore();
   }
  }
  if(blur>.98)return;             // at spooling speed the texture is an even blur
