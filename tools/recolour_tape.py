@@ -59,6 +59,9 @@ mask = gaussian_filter(mask, .8 * K)
 
 # ---- recolour: opaque satin oxide ------------------------------------------------
 L = (.3 * r + .59 * g + .11 * b)
+# The amber tape was translucent: deck detail showed through it. Opaque tape
+# shows none, so the lighting is taken from a softened copy of the luminance.
+L = gaussian_filter(L, 2.2 * K) * .8 + L * .2
 t = np.clip((L - .12) / .8, 0, 1) ** 1.15
 dark = np.array([.022, .021, .020])      # black oxide in shadow
 mid = np.array([.105, .102, .098])       # black oxide under the studio light

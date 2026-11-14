@@ -420,9 +420,25 @@ const filmSpans=[
 ];
 // 15 in/s on the plate: flange of 12½ in ≈ 2 × 111 px → ≈ 17.8 px per inch.
 const PLATE_PX_PER_SECOND=15*17.8;
+// Solid, glossy black tape across its width: a bright edge where the light
+// catches it, a soft sheen band, then deep black. Nothing shows through it.
+let tapeGloss=null;
+function glossFor(g,height){
+ if(tapeGloss)return tapeGloss;
+ tapeGloss=g.createLinearGradient(0,-height/2,0,height/2);
+ for(const [s,c] of [[0,'#8a8986'],[.07,'#1c1c1b'],[.2,'#2e2e2c'],[.3,'#5c5b58'],[.38,'#262625'],[.6,'#0c0c0c'],[.92,'#060606'],[1,'#3a3a38']])tapeGloss.addColorStop(s,c);
+ return tapeGloss;
+}
 function drawThreadedFilm(g,phase,blur){
+ const height=13.6;
+ for(const span of filmSpans){
+  for(let i=1;i<span.length;i++){
+   const [x,y]=span[i-1],dx=span[i][0]-x,dy=span[i][1]-y,length=Math.hypot(dx,dy);
+   g.save();g.translate(x,y);g.rotate(Math.atan2(dy,dx));
+   g.fillStyle=glossFor(g,height);g.fillRect(0,-height/2,length,height);g.restore();
+  }
+ }
  if(blur>.98)return;             // at spooling speed the texture is an even blur
- const height=13;
  for(const span of filmSpans){
   let distance=span[0][0]-262;
   for(let i=1;i<span.length;i++){
