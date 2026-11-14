@@ -63,20 +63,79 @@ function initAudio(){
  const hiss=audio.createGain();hiss.gain.value=0;const hissSrc=loop(white);const hissHp=audio.createBiquadFilter();hissHp.type='highpass';hissHp.frequency.value=4500;hissSrc.connect(hissHp).connect(hiss).connect(master);
  sfx={master,hum,drum,drumOsc,wind,windBand,motor,motorGain,motorTone,hiss,white,pink,drumHz:0};
 }
-// Heavy transport solenoid / relay: a dull thump with a short metallic snap.
-function relaySound(strength=1){
- if(!sound)return;initAudio();if(!audio)return;audio.resume();
- const t=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();
- o.type='sine';o.frequency.setValueAtTime(95,t);o.frequency.exponentialRampToValueAtTime(42,t+.09);
- g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.32*strength,t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+.16);
- o.connect(g).connect(sfx.master);o.start(t);o.stop(t+.18);
- const n=audio.createBufferSource();n.buffer=sfx.white;const bp=audio.createBiquadFilter();bp.type='bandpass';bp.frequency.value=2600;bp.Q.value=1.4;
- const ng=audio.createGain();ng.gain.setValueAtTime(.22*strength,t);ng.gain.exponentialRampToValueAtTime(.0001,t+.035);
- n.connect(bp).connect(ng).connect(sfx.master);n.start(t,Math.random()*.5,.05);
- // a second, softer contact closing a few milliseconds later
- const n2=audio.createBufferSource();n2.buffer=sfx.white;const g2=audio.createGain();g2.gain.setValueAtTime(.09*strength,t+.028);g2.gain.exponentialRampToValueAtTime(.0001,t+.05);
- n2.connect(bp);bp.connect(g2).connect(sfx.master);n2.start(t+.028,Math.random()*.5,.03);
+// ---- mechanical sounds -------------------------------------------------------
+// Every control is built from three physical ingredients, scheduled to the
+// sample: a crisp contact transient (a few milliseconds of filtered noise), the
+// short ring of the part that was struck (damped partials), and, for the heavy
+// mechanism, a low body thump. A little random variation keeps repeats natural.
+const vary=(x,amt=.05)=>x*(1+(Math.random()*2-1)*amt);
+function audioReady(){if(!sound)return false;initAudio();if(!audio)return false;audio.resume();return true}
+function contact(t,{f=4000,q=1.2,dur=.004,gain=.2,hp=900}={}){
+ const n=audio.createBufferSource();n.buffer=sfx.white;
+ const bp=audio.createBiquadFilter();bp.type='bandpass';bp.frequency.value=vary(f,.08);bp.Q.value=q;
+ const h=audio.createBiquadFilter();h.type='highpass';h.frequency.value=hp;
+ const g=audio.createGain();g.gain.setValueAtTime(vary(gain,.12),t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+ n.connect(bp).connect(h).connect(g).connect(sfx.master);n.start(t,Math.random()*.8,dur+.01);
 }
+function ring(t,partials,gain=1){
+ for(const [f,decay,a] of partials){
+  const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=vary(f,.03);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(a*gain,t+.0012);g.gain.exponentialRampToValueAtTime(.0001,t+decay);
+  o.connect(g).connect(sfx.master);o.start(t);o.stop(t+decay+.02);
+ }
+}
+function thump(t,f0,f1,dur,gain){
+ const o=audio.createOscillator(),g=audio.createGain();o.type='sine';
+ o.frequency.setValueAtTime(vary(f0),t);o.frequency.exponentialRampToValueAtTime(f1,t+dur*.7);
+ g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(gain,t+.003);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+ o.connect(g).connect(sfx.master);o.start(t);o.stop(t+dur+.02);
+ contact(t,{f:700,q:.8,dur:dur*.4,gain:gain*.35,hp:120});
+}
+// Transport push-key: the cap bottoms out, the interlock latch snaps, then the
+// solenoid pulls in (PLAY and REC also close the pinch roller onto the capstan).
+function keySound(m){
+ if(!audioReady())return;const t=audio.currentTime+.005;
+ contact(t,{f:3400,q:1.6,dur:.005,gain:.34});                                    // bakelite cap hits its stop
+ ring(t,[[1850,.035,.05],[3150,.022,.035]]);
+ contact(t+.011,{f:6200,q:2,dur:.003,gain:.28,hp:2500});                          // steel latch
+ ring(t+.011,[[4300,.05,.03],[6900,.03,.02]]);
+ if(m==='stop'){
+  thump(t+.03,120,48,.16,.34);                                                  // brakes clamp the reels
+  contact(t+.034,{f:1500,q:.9,dur:.03,gain:.12,hp:400});
+ }else{
+  thump(t+.035,105,55,.12,.28);                                                 // solenoid
+  if(m==='play'||m==='record'){thump(t+.085,180,90,.07,.14);contact(t+.087,{f:2300,q:1.5,dur:.006,gain:.12})}  // pinch roller
+ }
+}
+// Mains switch: a stiff toggle snap and the main contactor dropping in or out.
+function powerSound(on){
+ if(!audioReady())return;const t=audio.currentTime+.005;
+ toggleAt(t,1.2);
+ thump(t+.05,on?90:75,40,.22,.4);contact(t+.052,{f:1100,q:1,dur:.04,gain:.14,hp:300});
+ if(on)ring(t+.06,[[120,.35,.025],[240,.25,.012]]);                            // transformer energising
+}
+// Bat-handle toggle: over-centre spring snap, metallic and very short.
+function toggleAt(t,strength=1){
+ contact(t,{f:2600,q:1.1,dur:.003,gain:.18*strength,hp:1200});
+ contact(t+.0045,{f:7200,q:2.4,dur:.0025,gain:.32*strength,hp:3500});
+ ring(t+.0045,[[2350,.03,.04*strength],[5300,.022,.03*strength],[8100,.015,.018*strength]]);
+ thump(t+.004,240,140,.03,.07*strength);
+}
+function toggleSound(){if(audioReady())toggleAt(audio.currentTime+.005)}
+// Rotary knob: two or three detents clicking past under the fingers.
+function rotarySound(){
+ if(!audioReady())return;const t=audio.currentTime+.005;
+ for(let k=0;k<3;k++){const at=t+k*vary(.045,.2);contact(at,{f:3800,q:2,dur:.003,gain:.6-k*.1,hp:1800});ring(at,[[2900,.016,.06]])}
+}
+// Bakelite panel key: press and, a moment later, the spring-return release.
+function bakeliteSound(){
+ if(!audioReady())return;const t=audio.currentTime+.005;
+ contact(t,{f:2900,q:1.4,dur:.004,gain:.36});ring(t,[[1450,.03,.055],[2600,.02,.035]]);thump(t+.002,210,120,.03,.08);
+ contact(t+vary(.075,.15),{f:3600,q:1.6,dur:.003,gain:.12});ring(t+.075,[[1700,.02,.02]]);
+}
+// Soft contact on the monitor glass or a nameplate.
+function softTap(){if(!audioReady())return;const t=audio.currentTime+.005;contact(t,{f:1800,q:.9,dur:.006,gain:.1,hp:500});thump(t,160,90,.04,.05)}
+const relaySound=()=>keySound(mode);   // kept for older callers
 // The free end of the tape flicking against the reel and deck.
 function slapSound(strength){
  if(!sound||!sfx||audio.state!=='running')return;
@@ -85,14 +144,7 @@ function slapSound(strength){
  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.09*strength+.01,t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+.05);
  n.connect(bp).connect(g).connect(sfx.master);n.start(t,Math.random()*.5,.06);
 }
-// Light switch / panel button click for interface controls.
-function clickSound(){
- if(!sound)return;initAudio();if(!audio)return;audio.resume();
- const t=audio.currentTime,n=audio.createBufferSource();n.buffer=sfx.white;
- const hp=audio.createBiquadFilter();hp.type='highpass';hp.frequency.value=1800;
- const g=audio.createGain();g.gain.setValueAtTime(.16,t);g.gain.exponentialRampToValueAtTime(.0001,t+.025);
- n.connect(hp).connect(g).connect(sfx.master);n.start(t,Math.random()*.5,.03);
-}
+function clickSound(){bakeliteSound()}
 function audioUpdate(){
  if(!sfx)return;const t=audio.currentTime,on=power&&sound;
  sfx.master.gain.setTargetAtTime(sound?1:0,t,.05);
@@ -129,7 +181,7 @@ function setMode(m){
  pressed=m;pressedUntil=performance.now()+180;
  if(m===mode)return;
  if(m==='record')toast('REC · προσομοίωση εγγραφής');
- mode=m;relaySound(m==='stop'?1.1:.9);
+ mode=m;keySound(m);
  $('#state').textContent=STATE_TEXT[m];$('#speed').textContent=SPEED_TEXT[m];
  audioUpdate();
 }
@@ -172,9 +224,9 @@ $('#power').onclick=()=>{
  if(power)setMode('stop');power=!power;
  document.body.classList.toggle('powered',power);document.body.classList.toggle('off',!power);
  $('#power').setAttribute('aria-pressed',power);$('#power').textContent=power?'I':'O';$('#powerText').textContent=power?'ON':'OFF';
- $('#state').textContent=power?'READY':'POWER OFF';relaySound(1.2);audioUpdate();
+ $('#state').textContent=power?'READY':'POWER OFF';powerSound(power);audioUpdate();
  if(typeof syncTransportKeys==='function')syncTransportKeys()};
-$('#sound').onclick=()=>{sound=!sound;if(sound){initAudio();audio&&audio.resume()}$('#sound').textContent=sound?'Ήχος · Ναι':'Ήχος · Όχι';$('#sound').setAttribute('aria-pressed',sound);clickSound();audioUpdate()};
+$('#sound').onclick=()=>{sound=!sound;if(sound){initAudio();audio&&audio.resume()}else if(sfx){const was=sound;sound=true;bakeliteSound();sound=was}$('#sound').textContent=sound?'Ήχος · Ναι':'Ήχος · Όχι';$('#sound').setAttribute('aria-pressed',sound);clickSound();audioUpdate()};
 $('#seek').oninput=e=>{if(Math.abs(tapeSpeed)>1.2)return;position=+e.target.value;updateTime()};
 $('#tracking').oninput=e=>{tracking=+e.target.value;$('#trackVal').textContent=(tracking>0?'+':'')+String(tracking).padStart(2,'0');$('#signal').textContent=Math.abs(tracking)<8?'● Σταθερό σήμα':Math.abs(tracking)<26?'◌ Ρυθμίστε το tracking':'◌ Ασταθές σήμα'};
 $('#monitor').onclick=focusMonitor;

@@ -6,5 +6,18 @@ bar.insertAdjacentHTML('beforeend','<button id="eject">Εξαγωγή</button><b
 function shelfStatus(){document.querySelectorAll('[data-reel]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.reel===loaded));$('#reelStatus').textContent=loaded?'Η μπομπίνα τοποθετήθηκε':'Κενή βάση · επιλέξτε μπομπίνα'}
 function loadReel(id){if(power)setMode('stop');position=0;angle=0;tapeSpeed=0;reelAngle[0]=reelAngle[1]=0;loaded=id;source=id||'studio';$('#source').value=source;updateTime();shelfStatus();clickSound();toast(id?'Η ταινία είναι έτοιμη.':'Η μπομπίνα επέστρεψε στο ράφι.')}
 document.querySelectorAll('[data-reel]').forEach(b=>b.onclick=()=>loadReel(b.dataset.reel));$('#source').onchange=e=>loadReel(e.target.value);$('#eject').onclick=()=>loadReel('');$('#deskPower').onclick=()=>{$('#power').click();$('#deskPower').setAttribute('aria-pressed',power);toast(power?'Τροφοδοσία ενεργή':'Τροφοδοσία κλειστή')};$('#view').oninput=e=>tilt=+e.target.value*Math.PI/180;$('#zoom').oninput=e=>zoom=+e.target.value/100;
-document.addEventListener('click',e=>{if(sound&&e.target.closest('button,select')&&!e.target.closest('[data-mode],[data-reel],#eject,#power,#deskPower'))clickSound()});
+// Each kind of control makes its own sound (see app.js).
+const TOGGLES=['Ζουμ','Σήμανση','Ράφι'],KNOBS=['Tracking','Οθόνη','Μουσική'],REELS_ON_SHELF=['Επίκαιρα','Τόκιο','Apollo 11'];
+document.addEventListener('click',e=>{
+ if(!sound)return;
+ const el=e.target.closest('button,select');if(!el||el.closest('[data-mode],[data-reel],#eject,#power,#deskPower,#sound'))return;
+ const tag=el.dataset.tag||el.title||'';
+ if(el.classList.contains('physical-dial')){
+  if(TOGGLES.includes(tag))toggleSound();
+  else if(KNOBS.includes(tag))rotarySound();
+  else if(tag==='Τροφοδοσία'||REELS_ON_SHELF.includes(tag))return;   // power and reel loading have their own sounds
+  else softTap();
+ }else if(el.classList.contains('crt-hit'))softTap();
+ else bakeliteSound();
+});
 shelfStatus();

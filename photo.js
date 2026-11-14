@@ -14,7 +14,7 @@ function place(element,x,y,w,h){
 const screenButton=document.createElement('button');
 screenButton.className='crt-hit';
 screenButton.setAttribute('aria-label','Μεγέθυνση CRT');
-screenButton.onclick=()=>{focusMonitor();clickSound()};
+screenButton.onclick=()=>{focusMonitor()};
 place(screenButton,...geometry.screen);
 for(const [id,x,y,w,h] of geometry.keys){
  const key=document.createElement('button');key.className='hit-key';key.dataset.mode=id;
