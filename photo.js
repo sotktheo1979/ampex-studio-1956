@@ -109,17 +109,17 @@ function onDisc(r,u,v,h=0){const c=Math.cos(r.slant),s=Math.sin(r.slant),X=u*r.r
 const packTop=document.createElement('canvas');packTop.width=packTop.height=768;
 (function buildPackTop(){
  const g=packTop.getContext('2d');g.translate(384,384);g.scale(384,384);
- g.fillStyle='#24170f';g.beginPath();g.arc(0,0,1,0,7);g.fill();
+ g.fillStyle='#0d0d0c';g.beginPath();g.arc(0,0,1,0,7);g.fill();
  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
  for(let rr=.26;rr<1;rr+=.0042){
   const v=rnd();g.beginPath();g.arc(0,0,rr,0,7);
   g.lineWidth=.0021+v*.0016;
-  g.strokeStyle=v>.93?'rgba(150,118,92,.38)':v>.7?'rgba(92,66,48,.30)':v<.18?'rgba(6,3,2,.5)':'rgba(50,33,22,.35)';
+  g.strokeStyle=v>.93?'rgba(120,118,114,.34)':v>.7?'rgba(62,61,58,.30)':v<.18?'rgba(0,0,0,.5)':'rgba(30,30,28,.35)';
   g.stroke();
  }
  if(g.createConicGradient){
   const sheen=g.createConicGradient(-.7,0,0);
-  for(const [s,a] of [[0,.05],[.12,.30],[.2,.06],[.5,.04],[.62,.26],[.7,.05],[1,.05]])sheen.addColorStop(s,'rgba(205,180,155,'+(a*.6)+')');
+  for(const [s,a] of [[0,.05],[.12,.30],[.2,.06],[.5,.04],[.62,.26],[.7,.05],[1,.05]])sheen.addColorStop(s,'rgba(190,188,182,'+(a*.5)+')');
   g.globalCompositeOperation='screen';g.fillStyle=sheen;g.beginPath();g.arc(0,0,1,0,7);g.fill();g.globalCompositeOperation='source-over';
  }
 })();
@@ -295,7 +295,7 @@ function cylinder(g,r,R,d,texture,c0,c1){
  g.save();g.save();plateDisc(g,r,.6);g.beginPath();g.arc(0,0,R,0,Math.PI*2);g.restore();g.clip();
  const bx=reelBox(r);g.drawImage(r.packProj,bx.x,bx.y+.6,bx.w,bx.h);
  plateDisc(g,r,.6);
- g.lineWidth=.007;g.strokeStyle='rgba(196,168,140,.35)';g.beginPath();g.arc(0,0,R-.004,Math.PI*1.05,Math.PI*1.95);g.stroke();
+ g.lineWidth=.007;g.strokeStyle='rgba(170,168,162,.3)';g.beginPath();g.arc(0,0,R-.004,Math.PI*1.05,Math.PI*1.95);g.stroke();
  g.restore();
  // contact shadow where the pack meets the lower flange
  g.save();plateDisc(g,r,d);g.beginPath();g.arc(0,0,R+.02,0,Math.PI);g.lineWidth=.02;g.strokeStyle='rgba(10,7,4,.35)';g.stroke();g.restore();
@@ -314,10 +314,10 @@ function drawTail(g,r,R,clear){
  const nx=-(etop[1]-top[1]),ny=etop[0]-top[0],n=Math.hypot(nx,ny)||1,span=6;
  const mx=(top[0]+etop[0])/2,my=(top[1]+etop[1])/2;
  const across=g.createLinearGradient(mx,my,mx-nx/n*span*r.side,my-ny/n*span*r.side);
- across.addColorStop(0,'rgba(92,68,52,.98)');across.addColorStop(.3,'rgba(48,32,22,.98)');across.addColorStop(1,'rgba(22,14,9,.98)');
+ across.addColorStop(0,'rgba(64,63,60,.98)');across.addColorStop(.3,'rgba(24,24,23,.98)');across.addColorStop(1,'rgba(8,8,8,.98)');
  if(clear){g.fillStyle='rgba(236,226,200,.16)';g.fill();g.lineWidth=.5;g.strokeStyle='rgba(255,248,226,.55)';g.stroke()}
  else{g.fillStyle=across;g.fill()}
- g.lineWidth=.55;g.strokeStyle='rgba(205,182,158,.55)';g.beginPath();g.moveTo(...top);g.lineTo(...etop);g.stroke();
+ g.lineWidth=.55;g.strokeStyle='rgba(175,173,168,.5)';g.beginPath();g.moveTo(...top);g.lineTo(...etop);g.stroke();
  g.lineWidth=.5;g.strokeStyle='rgba(30,14,5,.55)';g.beginPath();g.moveTo(...bot);g.lineTo(...ebot);g.stroke();
  g.restore();
 }
@@ -390,7 +390,7 @@ function resizeLive(){
 new ResizeObserver(resizeLive).observe(room);resizeLive();
 
 // ---------------------------------------------------------------------------
-// THREADED TAPE — two-inch quadruplex videotape: an opaque, dark-brown oxide
+// THREADED TAPE — two-inch quadruplex videotape: an opaque, black oxide
 // ribbon. The pictures are recorded as invisible magnetic tracks, so nothing is
 // printed on it; what shows that it moves is the faint, uneven texture of the
 // coating (slight density changes, the odd speck) travelling with it.
@@ -405,12 +405,12 @@ const oxideTile=document.createElement('canvas');oxideTile.width=OXIDE_LEN*2;oxi
  const rows=[];for(let y=0;y<H;y++)rows.push((rnd()-.5)*.9);           // lengthwise coating streaks
  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
   const v=wave(x)*.6+rows[y]*.5+(rnd()-.5)*.35,o=(y*W+x)*4;
-  if(v>0){d[o]=210;d[o+1]=182;d[o+2]=150;d[o+3]=Math.min(255,v*46)}   // lighter, satin
-  else{d[o]=8;d[o+1]=4;d[o+2]=2;d[o+3]=Math.min(255,-v*70)}           // denser oxide
+  if(v>0){d[o]=190;d[o+1]=188;d[o+2]=182;d[o+3]=Math.min(255,v*40)}   // lighter, satin
+  else{d[o]=0;d[o+1]=0;d[o+2]=0;d[o+3]=Math.min(255,-v*70)}           // denser oxide
  }
  g.putImageData(img,0,0);
  // a few specks and one splice-like mark, so the motion reads clearly
- for(let k=0;k<9;k++){g.fillStyle='rgba(225,205,175,'+(.35+rnd()*.35)+')';g.fillRect(rnd()*W,2+rnd()*(H-4),1.2+rnd()*2,1)}
+ for(let k=0;k<9;k++){g.fillStyle='rgba(210,208,200,'+(.3+rnd()*.3)+')';g.fillRect(rnd()*W,2+rnd()*(H-4),1.2+rnd()*2,1)}
  g.fillStyle='rgba(200,190,175,.22)';g.fillRect(W*.62,0,3,H);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(W*.62+3,0,1,H);
 })();
 // Measured on the 960 × 540 plate. Each span ends behind a guide or housing.

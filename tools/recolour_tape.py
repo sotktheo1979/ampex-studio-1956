@@ -1,8 +1,7 @@
 """Recolour the tape in the master photograph as real 2-inch quadruplex videotape.
 
 The generated photograph showed the tape as bright, translucent amber, like
-film stock. Real quad tape (e.g. Scotch 400) is an opaque ribbon: dark
-chocolate-brown oxide with a soft satin sheen. Only tape pixels change:
+film stock. Real quad tape is an opaque ribbon: black, with a soft satin sheen. Only tape pixels change:
 
 * along the threaded path, tape is found by comparing with empty.webp (the same
   studio with no reels or tape) and keeping the warm, saturated difference;
@@ -61,12 +60,12 @@ mask = gaussian_filter(mask, .8 * K)
 # ---- recolour: opaque satin oxide ------------------------------------------------
 L = (.3 * r + .59 * g + .11 * b)
 t = np.clip((L - .12) / .8, 0, 1) ** 1.15
-dark = np.array([.115, .068, .041])      # deep shadow on the oxide
-mid = np.array([.33, .215, .145])        # oxide under the studio light
-sheen = np.array([.70, .60, .50])        # satin highlight, never mirror-bright
+dark = np.array([.022, .021, .020])      # black oxide in shadow
+mid = np.array([.105, .102, .098])       # black oxide under the studio light
+sheen = np.array([.52, .51, .49])        # faint neutral satin sheen
 tape = dark + (mid - dark) * t[..., None]
-hi = np.clip((t - .72) / .28, 0, 1)[..., None] ** 1.6
-tape = tape + (sheen - tape) * hi * .55
+hi = np.clip((t - .68) / .32, 0, 1)[..., None] ** 1.5
+tape = tape + (sheen - tape) * hi * .5
 out = a * (1 - mask[..., None]) + tape * mask[..., None]
 Image.fromarray((np.clip(out, 0, 1) * 255 + .5).astype(np.uint8)).save(out_path, quality=90, method=6)
 print('recoloured', round(float((mask > .5).mean()) * 100, 2), '% of the plate ->', out_path)
